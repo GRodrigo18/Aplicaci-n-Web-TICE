@@ -26,6 +26,11 @@ async function esperarBase(intentos = 30) {
       await pool.query('SELECT 1');
       return;
     } catch (err) {
+      // Usuario o contraseña incorrectos: reintentar no sirve y en Supabase bloquea la conexión por varios minutos
+      if (err.code === '28P01' || err.code === '28000' || /authentication|ECIRCUITBREAKER/i.test(err.message)) {
+        err.message = `No se pudo entrar a la base de datos: revise el usuario y la contraseña de DATABASE_URL (${err.message})`;
+        throw err;
+      }
       if (i === intentos) throw err;
       await new Promise((r) => setTimeout(r, 2000));
     }
