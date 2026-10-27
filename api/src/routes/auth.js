@@ -16,8 +16,10 @@ const datosSesion = (u) => ({
 });
 
 // Datos públicos que la pantalla de inicio necesita antes de iniciar sesión
+const soloGoogle = () => config.soloGoogle && Boolean(config.googleClientId);
+
 router.get('/config', (_req, res) => {
-  res.json({ google_client_id: config.googleClientId || null, dominios: config.dominiosCorreo });
+  res.json({ google_client_id: config.googleClientId || null, dominios: config.dominiosCorreo, solo_google: soloGoogle() });
 });
 
 // Iniciar sesión con la cuenta de Google institucional. La cuenta debe estar registrada y activa en el sistema:
@@ -37,6 +39,7 @@ router.post('/google', h(async (req, res) => {
     if (usuario.bloqueado_hasta && new Date(usuario.bloqueado_hasta) > new Date()) {
       throw new HttpError(423, 'Cuenta bloqueada temporalmente por intentos fallidos', { bloqueado: true });
     }
+    await c.query(`UPDATE usuarios SET ultimo_acceso = now(), ultimo_metodo = 'GOOGLE' WHERE id = $1`, [usuario.id]);
     await registrar(c, usuario, { entidad: 'usuario', entidadId: usuario.id, accion: 'LOGIN', detalle: { ip: req.ip, metodo: 'google' } });
     return usuario;
   });
@@ -46,6 +49,7 @@ router.post('/google', h(async (req, res) => {
 
 // UC-01 Iniciar sesión
 router.post('/login', h(async (req, res) => {
+  if (soloGoogle()) throw new HttpError(403, 'Ingrese con su cuenta de Google institucional');
   const correo = String(req.body?.correo || '').trim().toLowerCase();
   const password = String(req.body?.password || '');
   if (!correo || !password) throw invalido('Ingrese su correo institucional y su contraseña');
@@ -83,7 +87,8 @@ router.post('/login', h(async (req, res) => {
       }
       return { error: new HttpError(401, 'Credenciales inválidas', { intentosRestantes: config.maxIntentos - intentos }) };
     }
-    await c.query('UPDATE usuarios SET intentos_fallidos = 0, bloqueado_hasta = NULL WHERE id = $1', [u.id]);
+    await c.query(`UPDATE usuarios SET intentos_fallidos = 0, bloqueado_hasta = NULL, ultimo_acceso = now(), ultimo_metodo = 'CONTRASENA'
+                    WHERE id = $1`, [u.id]);
     await registrar(c, u, { entidad: 'usuario', entidadId: u.id, accion: 'LOGIN', detalle: { ip: req.ip } });
     return { usuario: u };
   });

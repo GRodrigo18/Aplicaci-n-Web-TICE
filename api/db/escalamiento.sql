@@ -40,3 +40,6 @@ END $$;
 INSERT INTO tipos_equipo (nombre) VALUES ('All in One'), ('Servidor') ON CONFLICT (nombre) DO NOTHING;
 -- "Obsoleto" en el Excel: sigue en uso, por eso cuenta como disponible para la DT
 INSERT INTO estados_equipo (codigo, nombre, operativo) VALUES ('OBSOLETO', 'Obsoleto', TRUE) ON CONFLICT (codigo) DO NOTHING;
+-- Último ingreso de cada usuario y con qué método (contraseña o Google), visible en la tabla de usuarios
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS ultimo_acceso TIMESTAMPTZ;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS ultimo_metodo VARCHAR(10);

@@ -50,6 +50,8 @@ CREATE TABLE usuarios (
   activo             BOOLEAN      NOT NULL DEFAULT TRUE,
   intentos_fallidos  INTEGER      NOT NULL DEFAULT 0,
   bloqueado_hasta    TIMESTAMPTZ,
+  ultimo_acceso      TIMESTAMPTZ,
+  ultimo_metodo      VARCHAR(10),                       -- CONTRASENA o GOOGLE
   creado_en          TIMESTAMPTZ  NOT NULL DEFAULT now(),
   CHECK (rol = 'DIRECTOR' OR sede_id IS NOT NULL)
 );

@@ -25,6 +25,8 @@ const config = {
   dominiosCorreo: (env.DOMINIOS_CORREO || 'nslm.edu.pe').split(',').map((d) => d.trim().toLowerCase()).filter(Boolean),
   // ID de cliente OAuth de Google Cloud; sin él no se muestra "Iniciar sesión con Google"
   googleClientId: env.GOOGLE_CLIENT_ID || '',
+  // SOLO_GOOGLE=true: se entra solo con Google (necesita GOOGLE_CLIENT_ID; sin él se sigue aceptando la contraseña)
+  soloGoogle: env.SOLO_GOOGLE === 'true',
 };
 
 if (!config.jwtSecret) {

@@ -47,7 +47,9 @@ gratuita vence a los 30 días.
 - **Dominio:** `DOMINIOS_CORREO` (por defecto `nslm.edu.pe`) limita los correos de usuarios y buzones.
 - **Iniciar sesión con Google:** crear un *ID de cliente OAuth* (aplicación web) en Google Cloud con el origen
   autorizado de la URL del sistema y ponerlo en `GOOGLE_CLIENT_ID`. Solo entran cuentas del dominio que estén
-  registradas y activas en el sistema.
+  registradas y activas en el sistema. Con `SOLO_GOOGLE=true` (y `GOOGLE_CLIENT_ID` puesto) se desactiva la
+  contraseña y solo se entra con Google. La tabla de usuarios muestra el último ingreso de cada cuenta y si fue con
+  contraseña o con Google.
 - **Consulta SQL:** *Base de datos → Consulta SQL* ejecuta `SELECT` en una transacción de solo lectura (5 s, 500 filas).
 
 ### Respaldo y restauración (RNF-07)
@@ -99,7 +101,7 @@ Variables: `DATABASE_URL` (por defecto `postgres://tice:tice@localhost:5432/tice
 | Acuse y avisos al solicitante (bandeja de salida) | RF-10 | UC-10 | CP-19 |
 | Dashboard: TRI, TAI, ICI, PIR, DT | RF-06, RNF-02 | UC-11 | CP-14, CP-28 |
 | Importación del inventario desde Excel, correos del dominio, Google, roles | RF-01, RF-02 | UC-01, UC-04 | CP-23 a CP-27 |
-| Respaldo descargable de la base (.sql con pg_dump) | RNF-07 | — | CP-29 |
+| Respaldo diario (Docker) y descargable desde la web (.sql con pg_dump) | RNF-07 | — | CP-29 |
 
 ### Escalamiento (ITIL 4)
 
@@ -144,9 +146,9 @@ porcentaje de equipos localizados en cada auditoría se siguen mostrando como da
 - `operaciones_bd`: triggers cuentan cada escritura en `equipos` e `incidencias`; la vista `operaciones_sin_bitacora`
   muestra las transacciones que escribieron sin dejar registro (por ejemplo, un cambio hecho por fuera del sistema).
 
-### Respaldo (RNF-07)
+### Respaldo desde la web (Render + Supabase)
 
-En **Base de datos → Descargar respaldo** el Jefe de TI baja un archivo `.sql` con la estructura, los datos, los
+En Render no corre el servicio `backup` de Docker Compose. Por eso, en **Base de datos → Descargar respaldo** el Jefe de TI baja un archivo `.sql` con la estructura, los datos, los
 triggers y las secuencias del esquema `public` (pg_dump). Cada descarga queda en la bitácora (`RESPALDO`). Para
 restaurarlo, se ejecuta el archivo en una base vacía (por ejemplo, en el SQL Editor de un proyecto nuevo de Supabase o
 con `psql "<cadena de conexión>" -f respaldo.sql`). La cadena de la bitácora se conserva igual. Conviene descargarlo al

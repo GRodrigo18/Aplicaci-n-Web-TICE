@@ -1,4 +1,4 @@
-// Casos de prueba CP-23 a CP-29 (semana 10): importación del inventario desde Excel, correos del dominio
+// Casos de prueba CP-23 a CP-30 (semana 10): importación del inventario desde Excel, correos del dominio
 // institucional, inicio de sesión con Google, consulta SQL de solo lectura, separación de roles, KPI vigentes y respaldo.
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tice:tice@localhost:5432/tice_test';
 process.env.DOMINIOS_CORREO = 'colegio.edu.pe';
@@ -131,6 +131,8 @@ test('CP-25 Iniciar sesión con Google: firma, destinatario, dominio y cuenta re
   assert.equal(ok.body.usuario.rol, 'TICE');
   const me = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${ok.body.token}`);
   assert.equal(me.status, 200);
+  const { rows: [g] } = await query(`SELECT ultimo_metodo FROM usuarios WHERE correo = 'tice.cen.usuario@colegio.edu.pe'`);
+  assert.equal(g.ultimo_metodo, 'GOOGLE');
 
   const sinCuenta = await request(app).post('/api/auth/google').send({ credential: firmar('nuevo@colegio.edu.pe') });
   assert.equal(sinCuenta.status, 403);
@@ -224,4 +226,25 @@ test('CP-29 RNF-07 Respaldo: el Jefe de TI descarga la base completa en .sql y l
   assert.match(r.body, /COPY public\.equipos /);
   const { rows: [l] } = await query(`SELECT * FROM logs_auditoria WHERE accion = 'RESPALDO' ORDER BY secuencia DESC LIMIT 1`);
   assert.ok(l && l.detalle.bytes > 0);
+});
+
+test('CP-30 La tabla de usuarios muestra el último ingreso y su método; con SOLO_GOOGLE solo se entra con Google', async () => {
+  const login = await request(app).post('/api/auth/login').send({ correo: 'tice.cen.usuario@colegio.edu.pe', password: PASSWORD });
+  assert.equal(login.status, 200);
+  const r = await request(app).get('/api/usuarios').set(auth('director'));
+  const u = r.body.find((x) => x.correo === 'tice.cen.usuario@colegio.edu.pe');
+  assert.equal(u.ultimo_metodo, 'CONTRASENA');
+  assert.ok(Date.now() - new Date(u.ultimo_acceso).getTime() < 60000);
+  assert.ok(!('password_hash' in u));
+
+  // SOLO_GOOGLE: con Google configurado ya no se acepta la contraseña
+  const config = require('../src/config');
+  config.soloGoogle = true;
+  try {
+    assert.equal((await request(app).get('/api/auth/config')).body.solo_google, true);
+    const conClave = await request(app).post('/api/auth/login').send({ correo: 'tice.cen.usuario@colegio.edu.pe', password: PASSWORD });
+    assert.equal(conClave.status, 403);
+  } finally {
+    config.soloGoogle = false;
+  }
 });

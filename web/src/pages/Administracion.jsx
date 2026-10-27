@@ -75,10 +75,11 @@ export default function Administracion() {
       <Aviso>{error}</Aviso>
       <div className="tarjeta mb-6 overflow-x-auto">
         <table className="tabla">
-          <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Sede</th><th>Estado</th><th /></tr></thead>
+          <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Sede</th><th>Último ingreso</th><th>Estado</th><th /></tr></thead>
           <tbody>{usuarios.map((u) => (
             <tr key={u.id}>
               <td>{u.nombre}</td><td>{u.correo}</td><td>{u.rol === 'DIRECTOR' ? 'Director de TI' : 'Usuario TICE'}</td><td>{u.sede_nombre || 'Todas'}</td>
+              <td className="whitespace-nowrap text-xs">{u.ultimo_acceso ? <>{fechaHora(u.ultimo_acceso)} · {u.ultimo_metodo === 'GOOGLE' ? 'con Google' : 'con contraseña'}</> : <span className="text-slate-400">Nunca</span>}</td>
               <td>
                 <Insignia valor={u.activo ? 'OPERATIVO' : 'BAJA'} texto={u.activo ? 'Activo' : 'Inactivo'} />
                 {u.bloqueado_hasta && new Date(u.bloqueado_hasta) > new Date() && <span className="ml-1 text-xs text-red-600">bloqueado hasta {fechaHora(u.bloqueado_hasta)}</span>}

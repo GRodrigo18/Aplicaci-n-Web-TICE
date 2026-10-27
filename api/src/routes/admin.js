@@ -60,7 +60,7 @@ router.put('/sedes/:id', soloDirector, h(async (req, res) => {
 }));
 
 const COLUMNAS_USUARIO = `u.id, u.nombre, u.correo, u.rol, u.sede_id, s.nombre AS sede_nombre, u.activo,
-  u.bloqueado_hasta, u.creado_en`;
+  u.bloqueado_hasta, u.ultimo_acceso, u.ultimo_metodo, u.creado_en`;
 
 router.get('/usuarios', soloDirector, h(async (_req, res) => {
   const { rows } = await query(

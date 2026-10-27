@@ -134,11 +134,14 @@ export default function Login() {
           {config.google_client_id && (
             <>
               <div className="mt-8"><BotonGoogle clientId={config.google_client_id} onCredencial={alGoogle} /></div>
-              <div className="my-6 flex items-center gap-3 text-xs font-medium uppercase tracking-wide text-slate-400">
-                <span className="h-px flex-1 bg-slate-200" />o con tu contraseña<span className="h-px flex-1 bg-slate-200" />
-              </div>
+              {!config.solo_google && (
+                <div className="my-6 flex items-center gap-3 text-xs font-medium uppercase tracking-wide text-slate-400">
+                  <span className="h-px flex-1 bg-slate-200" />o con tu contraseña<span className="h-px flex-1 bg-slate-200" />
+                </div>
+              )}
             </>
           )}
+          {config.solo_google ? <div className="mt-4"><Aviso>{error}</Aviso></div> : <>
           <label className={`${config.google_client_id ? '' : 'mt-8 '}block`}>
             <span className="etiqueta">Correo institucional</span>
             <span className="relative block">
@@ -158,6 +161,7 @@ export default function Login() {
           </label>
           <div className="mt-4"><Aviso>{error}</Aviso></div>
           <button className="btn-primario mt-5 w-full py-3.5 text-base" disabled={ocupado}>{ocupado ? 'Ingresando…' : <>Ingresar <ArrowRight size={18} /></>}</button>
+          </>}
           <p className="mt-5 flex items-start gap-2 text-[13px] text-slate-400">
             <ShieldCheck size={16} className="mt-0.5 shrink-0" />Sesión protegida con JWT. 5 intentos fallidos bloquean la cuenta 15 minutos.
           </p>
