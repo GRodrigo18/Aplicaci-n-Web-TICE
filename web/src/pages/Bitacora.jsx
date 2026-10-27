@@ -30,7 +30,7 @@ export default function Bitacora() {
         <button className="btn-secundario" onClick={() => api.get('/bitacora/verificar').then(setVerif)}><ShieldCheck size={17} />Verificar integridad</button>
       </section>
       {verif && (
-        <div className="grid gap-2 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
           <Aviso tipo={verif.integra ? 'ok' : 'error'}>
             {verif.integra ? `Cadena íntegra: ${verif.registros} registros verificados.` : `Se detectaron ${verif.registros_alterados.length} registro(s) alterado(s) (secuencia ${verif.registros_alterados.map((r) => r.secuencia).join(', ')}).`}
           </Aviso>
@@ -39,7 +39,7 @@ export default function Bitacora() {
           </Aviso>
         </div>
       )}
-      <div className="tarjeta grid gap-3 p-5 md:grid-cols-[2fr_1fr_1fr_1fr_1fr]">
+      <div className="tarjeta grid grid-cols-1 gap-3 p-5 md:grid-cols-[2fr_1fr_1fr_1fr_1fr]">
         <div className="relative">
           <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input className="entrada pl-11" placeholder="Buscar por usuario…" value={f.usuario} onChange={set('usuario')} />

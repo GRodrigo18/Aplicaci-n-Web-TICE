@@ -218,11 +218,11 @@ function PanelGestion() {
         </div>
       </section>
 
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-5">
         {d.indicadores.map((k) => <TarjetaKpi key={k.sigla} k={k} />)}
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <section className="tarjeta p-6 xl:col-span-2">
           <Cabecera icono={TrendingDown} titulo="Evolución del TRI" sub="Promedio semanal entre el registro y la solución de cada ticket" />
           <GraficoMttr datos={d.tri_semanal} base={tri.base} meta={tri.meta} />
@@ -258,7 +258,7 @@ function PanelGestion() {
         </section>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <section className="tarjeta p-6">
           <Cabecera icono={Gauge} titulo="Estado de los equipos" sub="Distribución por estado operativo" />
           <Dona segmentos={estados.filter((e) => e.estado !== 'BAJA')} total={resumen.activos} />

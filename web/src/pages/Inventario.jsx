@@ -34,7 +34,7 @@ export function FormEquipo({ equipo, onGuardado, onCerrar }) {
 
   return (
     <Modal titulo={nuevo ? 'Registrar nuevo equipo' : `Editar ${equipo.codigo}`} onCerrar={onCerrar} ancho="max-w-2xl">
-      <form onSubmit={guardar} className="grid gap-4 sm:grid-cols-2">
+      <form onSubmit={guardar} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {nuevo && <Campo etiqueta="Código (único en la sede) *"><input className="entrada font-mono uppercase" value={f.codigo} onChange={set('codigo')} placeholder="LAP-12" required /></Campo>}
         <Campo etiqueta="Tipo *">
           <select className="entrada" value={f.tipo_id} onChange={set('tipo_id')} required>
@@ -279,7 +279,7 @@ export default function Inventario() {
           <span className="w-16 text-sm text-slate-500">Propiedad</span>
           {[['PROPIO', 'Propio'], ['ALQUILADO', 'Alquilado']].map(([v, t]) => <button key={v} className={`chip ${filtros.propiedad === v ? 'chip-activo' : ''}`} onClick={() => set('propiedad', v)}>{t}</button>)}
         </div>
-        <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto]">
           <select className="entrada" value={filtros.marca} onChange={(e) => setFiltros({ ...filtros, marca: e.target.value })}>
             <option value="">Todas las marcas</option>{marcas.map((m) => <option key={m}>{m}</option>)}
           </select>

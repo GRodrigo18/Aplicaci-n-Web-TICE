@@ -18,7 +18,7 @@ function Lecturas({ titulo, filas }) {
         {filas.map((f) => (
           <li key={f.clave} className="flex items-center gap-2 py-1 text-[15px]">
             {f.icono || <CheckCircle2 size={18} className="text-emerald-500" />}
-            <span className="font-mono font-semibold text-slate-900">{f.codigo}</span>
+            <span className="whitespace-nowrap font-mono font-semibold text-slate-900">{f.codigo}</span>
             <span className="truncate text-slate-500">{f.texto}</span>
             <span className="ml-auto whitespace-nowrap text-xs text-slate-400">{f.derecha}</span>
           </li>
@@ -30,6 +30,7 @@ function Lecturas({ titulo, filas }) {
 }
 
 function ModoIdentificar() {
+  const { esDirector } = useSesion();
   const [e, setE] = useState(null);
   const [error, setError] = useState('');
   const [reportar, setReportar] = useState(false);
@@ -43,7 +44,7 @@ function ModoIdentificar() {
     } catch (x) { setError(x.message); }
   };
   return (
-    <div className="grid gap-6 xl:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
       <div className="space-y-4">
         <Lector onLectura={leer} aviso={error && <Aviso>{error}</Aviso>} />
         <Lecturas titulo="Lecturas de esta sesión" filas={lecturas} />
@@ -107,7 +108,7 @@ function ModoAuditoria() {
   }
   const pct = (lecturas.length / auditoria.equipos_esperados) * 100;
   return (
-    <div className="grid gap-6 xl:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
       <div className="space-y-4">
         <div className="tarjeta p-5">
           <div className="flex items-baseline justify-between text-sm text-slate-600">
@@ -153,7 +154,7 @@ function ModoTraslado() {
     } catch (x) { setMsg({ tipo: 'error', texto: x.message }); }
   };
   return (
-    <div className="grid gap-6 xl:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
       <Lector onLectura={leer} aviso={<Aviso tipo={msg.tipo}>{msg.texto}</Aviso>} />
       <div className="tarjeta self-start p-5">
         <div className="mb-3 text-sm font-semibold text-slate-700">Equipos por trasladar · {lista.length}</div>

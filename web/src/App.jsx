@@ -7,6 +7,7 @@ import { api, qs } from './api.js';
 import { useSesion } from './sesion.jsx';
 import { Avatar, IconoTipo, Insignia, SelectorSede } from './components/ui.jsx';
 import { Logo } from './components/Logo.jsx';
+import Falla from './components/Falla.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Inventario from './pages/Inventario.jsx';
@@ -161,7 +162,7 @@ function Layout({ children }) {
             <kbd className="hidden rounded-md border border-slate-200 px-1.5 font-mono text-[11px] text-slate-400 sm:inline">Ctrl K</kbd>
           </button>
         </header>
-        <main className="mx-auto max-w-[1500px] p-4 sm:p-8">{children}</main>
+        <main className="mx-auto max-w-[1500px] p-4 sm:p-8"><Falla key={pathname}>{children}</Falla></main>
       </div>
       {buscar && <Buscador onCerrar={() => setBuscar(false)} />}
     </div>

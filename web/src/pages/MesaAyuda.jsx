@@ -112,7 +112,7 @@ export function FormTicket({ inicial = {}, sedeId, onEnviar, textoBoton = 'Regis
   return (
     <form onSubmit={enviar} className="space-y-5">
       {!desdeCorreo && (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {esDirector && !sedeId && <Campo etiqueta="Sede *"><SelectorSede valor={f.sede_id} onChange={(v) => setF({ ...f, sede_id: v })} sedes={sedes} todas={false} /></Campo>}
           <Campo etiqueta="Correo del solicitante *"><input type="email" className="entrada" value={f.solicitante_correo} onChange={set('solicitante_correo')} required /></Campo>
           <Campo etiqueta="Nombre del solicitante"><input className="entrada" value={f.solicitante_nombre || ''} onChange={set('solicitante_nombre')} /></Campo>
@@ -126,7 +126,7 @@ export function FormTicket({ inicial = {}, sedeId, onEnviar, textoBoton = 'Regis
           {catalogos.categorias.map((c) => <button type="button" key={c} className={`chip ${f.categoria === c ? 'chip-activo' : ''}`} onClick={() => setF({ ...f, categoria: c })}>{c}</button>)}
         </div>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <span className="etiqueta">Impacto *</span>
           <Segmentado className="flex w-full" valor={f.impacto} onChange={(v) => setF({ ...f, impacto: v })} opciones={[['ALTO', 'Alto'], ['MEDIO', 'Medio'], ['BAJO', 'Bajo']]} />
@@ -200,7 +200,7 @@ function Escalar({ t, onEscalar }) {
   if (!abierto) return <button className="btn-secundario" onClick={() => setAbierto(true)}><ArrowUpRight size={16} />Escalar</button>;
   const listo = f.motivo.trim() && (f.nivel !== '3' || f.proveedor.trim());
   return (
-    <div className="mt-3 grid w-full gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:grid-cols-2">
+    <div className="mt-3 grid grid-cols-1 w-full gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:grid-cols-2">
       <h3 className="text-sm font-bold text-slate-800 sm:col-span-2">Escalar ticket (ITIL 4)</h3>
       <Campo etiqueta="Nivel">
         <select className="entrada" value={f.nivel} onChange={set('nivel')}>
@@ -286,7 +286,7 @@ function DetalleTicket({ id, onCerrar, onCambio }) {
                 <button className="btn-primario" disabled={!sol.solucion.trim()} onClick={() => setConfirmar({ solucion: true, texto: 'Marcar el ticket como Resuelto' })}>Marcar como resuelto</button>
               </div>
             )}
-            <div className="grid gap-6 pt-2 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6 pt-2 sm:grid-cols-2">
               <div><h3 className="mb-3 text-sm font-bold text-slate-800">Historial</h3><Historial registros={[...t.historial].reverse()} /></div>
               <div>
                 <h3 className="mb-3 text-sm font-bold text-slate-800">Avisos por correo</h3>
@@ -384,7 +384,7 @@ function Tablero({ tickets, cargar, setAbierto, error, setError, conteoCorreos, 
         <span className="flex items-center gap-1.5 text-slate-400"><Hand size={15} />Arrastra las tarjetas entre columnas para cambiar su estado</span>
       </div>
       <div className="mt-2"><Aviso>{error}</Aviso></div>
-      <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {COLUMNAS.map(([estado, nombre, punto]) => {
           let col = visibles.filter((t) => t.estado === estado);
           if (estado === 'CERRADO') col = col.sort((a, b) => new Date(b.fecha_cierre || b.actualizado_en) - new Date(a.fecha_cierre || a.actualizado_en));
@@ -485,7 +485,7 @@ function Correos({ alCambiar }) {
         {!esDirector && <button className="btn-secundario" onClick={() => setModal('registrar')}><MailPlus size={17} />Registrar correo</button>}
       </div>
       {aviso && <div className="mt-4"><Aviso tipo="ok">{aviso}</Aviso></div>}
-      <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(320px,2fr)_3fr]">
+      <div className="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(320px,2fr)_3fr]">
         <div className="tarjeta self-start p-2">
           {correos.map((x) => {
             const px = propuestas[x.id];

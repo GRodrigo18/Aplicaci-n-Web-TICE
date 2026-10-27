@@ -96,7 +96,7 @@ function PasarADatosReales({ onCerrar }) {
   }
   return (
     <Modal titulo="Pasar a datos reales" onCerrar={onCerrar} ancho="max-w-2xl">
-      <form onSubmit={enviar} className="grid gap-4 sm:grid-cols-2">
+      <form onSubmit={enviar} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2"><Aviso tipo="info">Se borran todos los datos de demostración (equipos, tickets, correos, auditorías, usuarios y bitácora) y se crean la sede y las dos cuentas reales. No se puede deshacer.</Aviso></div>
         <Campo etiqueta="Código de la sede *"><input className="entrada font-mono uppercase" value={f.sede_codigo} onChange={set('sede_codigo')} required /></Campo>
         <Campo etiqueta="Nombre de la sede *"><input className="entrada" value={f.sede_nombre} onChange={set('sede_nombre')} required /></Campo>
@@ -172,7 +172,7 @@ export default function BaseDatos() {
       {reales && <PasarADatosReales onCerrar={() => setReales(false)} />}
       <Segmentado className="mb-5" valor={vista} onChange={setVista} opciones={[['tablas', 'Tablas', Table2], ['sql', 'Consulta SQL', Terminal]]} />
       {vista === 'sql' ? <ConsultaSql /> : (
-      <div className="grid gap-5 lg:grid-cols-[260px_1fr]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[260px_1fr]">
         <nav className="tarjeta self-start p-2">
           {resumen.tablas.map((t) => (
             <button key={t.tabla} onClick={() => { setTabla(t.tabla); setPagina(1); }}

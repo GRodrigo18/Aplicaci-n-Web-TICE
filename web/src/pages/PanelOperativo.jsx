@@ -87,7 +87,7 @@ export default function PanelOperativo() {
         ))}
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         <section className="tarjeta min-w-0 p-5 sm:p-6">
           <Cabecera icono={ShieldAlert} titulo="Tickets por vencer" sub="Ordenados por el tiempo de SLA consumido" a="/mesa" />
           <ul className="divide-y divide-slate-100">
@@ -127,7 +127,7 @@ export default function PanelOperativo() {
         </section>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         <section className="tarjeta min-w-0 p-5 sm:p-6">
           <Cabecera icono={AlertTriangle} titulo="Equipos que necesitan atención" sub="Averiados o en mantenimiento" a="/inventario" />
           <ul className="divide-y divide-slate-100">

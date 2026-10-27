@@ -28,13 +28,13 @@ function Detalle({ id }) {
         <h2 className="text-2xl font-bold text-slate-900">#{a.id} · {a.sede_nombre}</h2>{insigniaAuditoria(a)}
         <span className="text-sm text-slate-500">{a.usuario_nombre} · {fechaHora(a.fecha_inicio)} → {fechaHora(a.fecha_fin)}</span>
       </div>
-      <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 xl:grid-cols-6">
         {tarjetas.map(([k, v, s, cumple]) => (
           <div key={k} className="tarjeta p-5"><div className="text-sm text-slate-500">{k}</div>
             <div className={`mt-1 text-2xl font-extrabold ${colorMeta(cumple ?? null)}`}>{v}</div>{s && <div className="text-xs text-slate-400">{s}</div>}</div>
         ))}
       </div>
-      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-2">
         <div className="tarjeta overflow-x-auto">
           <h3 className="px-5 pt-5 font-bold text-slate-800">Equipos faltantes</h3>
           <table className="tabla"><thead><tr><th>Código</th><th>Tipo</th><th>Ubicación registrada</th></tr></thead>
@@ -68,7 +68,7 @@ export default function Auditorias() {
         </p>
         {!esDirector && <button className="btn-primario" onClick={() => navegar('/pistoleo?modo=auditoria')}><ScanLine size={18} />Auditar con pistoleo</button>}
       </div>
-      <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
         {lista.map((a) => {
           const pct = Math.round((a.leidos / a.equipos_esperados) * 100);
           return (
