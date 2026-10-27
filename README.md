@@ -137,9 +137,10 @@ tenga el pre-test; hasta entonces el dashboard muestra "por medir".
 - `operaciones_bd`: triggers cuentan cada escritura en `equipos` e `incidencias`; la vista `operaciones_sin_bitacora`
   muestra las transacciones que escribieron sin dejar registro (por ejemplo, un cambio hecho por fuera del sistema).
 
-### Visor de la base de datos aparte (pgweb)
+### Administrador de la base de datos aparte (Adminer)
 
-`render.yaml` crea el servicio `visor-bd-tice` con [pgweb](https://github.com/sosedoff/pgweb) (`Dockerfile.pgweb`):
-una página aparte del sistema para ver las tablas, sus filas y su estructura y hacer consultas SQL. Está en modo
-solo lectura y pide usuario (`admin`) y contraseña (variable `PGWEB_AUTH_PASS`, que Render genera; se ve en
-*visor-bd-tice → Environment*).
+`render.yaml` crea el servicio `visor-bd-tice` con [Adminer](https://www.adminer.org/) (`Dockerfile.adminer`): una
+página aparte del sistema para ver las tablas y su estructura, buscar, agregar, editar y borrar filas y hacer
+consultas SQL. Se entra eligiendo *PostgreSQL* con el usuario, la contraseña y la base de `tice-db`
+(*Connect → Internal* en Render). Los cambios hechos ahí no pasan por la API: no quedan en la bitácora y la
+verificación de integridad muestra los de `equipos` e `incidencias` como operaciones sin bitácora. `logs_auditoria` no se puede modificar.

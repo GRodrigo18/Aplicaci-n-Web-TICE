@@ -1,0 +1,3 @@
+# Administrador web de la base de datos (Adminer), aparte del sistema: ver, buscar, agregar, editar y borrar filas.
+# Se entra con el usuario y la contraseña de PostgreSQL; ADMINER_DEFAULT_SERVER llena el servidor.
+FROM adminer:5.5.0

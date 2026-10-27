@@ -26,21 +26,17 @@ services:
       - key: DATOS_DEMO
         value: "true"
 
-  # Visor de la base de datos en el navegador (pgweb), separado del sistema. Pide usuario y contraseña
-  # (Environment > PGWEB_AUTH_PASS) y no permite modificar datos.
+  # Administrador de la base de datos en el navegador (Adminer), separado del sistema.
+  # Se entra con el usuario y la contraseña de tice-db (Connect > Internal).
   - type: web
     name: visor-bd-tice
     runtime: docker
     plan: free
     region: virginia
-    dockerfilePath: ./Dockerfile.pgweb
+    dockerfilePath: ./Dockerfile.adminer
     dockerContext: .
     envVars:
-      - key: PGWEB_DATABASE_URL
+      - key: ADMINER_DEFAULT_SERVER
         fromDatabase:
           name: tice-db
-          property: connectionString
-      - key: PGWEB_AUTH_USER
-        value: admin
-      - key: PGWEB_AUTH_PASS
-        generateValue: true
+          property: host
