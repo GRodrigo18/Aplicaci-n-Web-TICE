@@ -176,7 +176,7 @@ export function NuevoTicket({ equipoInicial, onCerrar, onCreado }) {
 }
 
 // Tiempo del SLA: restante o excedido en un ticket abierto; tiempo de resolución en uno resuelto
-function Sla({ t }) {
+export function Sla({ t }) {
   if (['RESUELTO', 'CERRADO'].includes(t.estado)) {
     return <span className={`flex items-center gap-1 text-xs font-semibold ${t.fuera_de_sla ? 'text-amber-600' : 'text-emerald-600'}`}><CheckCheck size={14} />{minutosATexto(t.minutos)}</span>;
   }
@@ -498,6 +498,7 @@ function Correos({ alCambiar }) {
                   <div className="truncate text-[15px] text-slate-800">{x.asunto}</div>
                   <div className="truncate text-sm text-slate-500">{x.cuerpo.replace(/\s+/g, ' ')}</div>
                   <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+                    {x.externo && <span className="rounded bg-amber-100 px-1 font-semibold text-amber-800">Externo</span>}
                     {x.estado === 'POR_ATENDER' && pr && <><span className="h-2 w-2 rounded-full" style={{ background: COLOR_PRIORIDAD[pr] }} />{NOMBRE_PRIORIDAD[pr]} · {px.categoria}</>}
                     {x.estado === 'POR_ATENDER' && px?.equipos?.[0] && <span className="font-mono text-slate-400">· {px.equipos[0].codigo}</span>}
                     {x.estado === 'CONVERTIDO' && <Insignia valor="CONVERTIDO" texto={`Ticket ${x.ticket_numero || ''}`} />}
@@ -517,6 +518,7 @@ function Correos({ alCambiar }) {
               <div className="mt-3 flex items-center gap-3">
                 <Avatar nombre={c.remitente_nombre || c.remitente} />
                 <div className="text-sm"><b className="text-slate-900">{c.remitente_nombre}</b> <span className="text-slate-500">&lt;{c.remitente}&gt;</span>
+                  {c.externo && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800" title="El remitente no usa el correo institucional">Fuera del dominio</span>}
                   <div className="text-xs text-slate-400">{fechaHora(c.recibido_en)}{esDirector ? ` · ${c.sede_nombre}` : ''}</div></div>
               </div>
             </div>

@@ -27,6 +27,7 @@ async function migrar({ forzar = false } = {}) {
   }
   if (forzar) await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
   await pool.query(fs.readFileSync(SCHEMA, 'utf8'));
+  await pool.query(fs.readFileSync(ESCALAMIENTO, 'utf8'));
   console.log('Base de datos creada');
   return true;
 }

@@ -45,6 +45,18 @@ export const api = {
   patch: (ruta, cuerpo = {}) => solicitud('PATCH', ruta, cuerpo),
 };
 
+// Envía un archivo tal cual (el Excel del inventario) y devuelve la respuesta JSON
+export async function subirArchivo(ruta, archivo) {
+  const r = await fetch(`/api${ruta}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/octet-stream', Authorization: `Bearer ${leerToken()}` },
+    body: archivo,
+  });
+  const datos = await r.json().catch(() => ({}));
+  if (!r.ok) throw new ApiError(r.status, datos);
+  return datos;
+}
+
 // Descarga un archivo protegido (CSV) con el token
 export async function descargar(ruta, nombre) {
   const r = await fetch(`/api${ruta}`, { headers: { Authorization: `Bearer ${leerToken()}` } });

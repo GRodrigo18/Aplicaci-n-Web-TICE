@@ -72,6 +72,11 @@ CREATE TABLE equipos (
   estado               VARCHAR(20)  NOT NULL REFERENCES estados_equipo(codigo),
   ubicacion            VARCHAR(80)  NOT NULL,
   observaciones        TEXT,
+  caracteristicas      TEXT,                     -- procesador, RAM, disco, pantalla…
+  mac                  VARCHAR(40),
+  propiedad            VARCHAR(10) CHECK (propiedad IN ('PROPIO', 'ALQUILADO')),
+  responsable          VARCHAR(120),
+  guia_factura         VARCHAR(60),
   qr_token             VARCHAR(40)  NOT NULL UNIQUE,
   ultima_verificacion  TIMESTAMPTZ,
   motivo_baja          TEXT,
@@ -303,6 +308,7 @@ INSERT INTO estados_equipo (codigo, nombre, operativo) VALUES
   ('OPERATIVO', 'Operativo', TRUE),
   ('MANTENIMIENTO', 'En mantenimiento', FALSE),
   ('AVERIADO', 'Averiado', FALSE),
+  ('OBSOLETO', 'Obsoleto', TRUE),
   ('BAJA', 'De baja', FALSE);
 
 INSERT INTO prioridades (codigo, nombre, sla_minutos, orden) VALUES
@@ -319,4 +325,4 @@ INSERT INTO estados_incidencia (codigo, nombre, orden) VALUES
 
 INSERT INTO tipos_equipo (nombre) VALUES
   ('Access point'), ('Computadora de escritorio'), ('Impresora'), ('Laptop'), ('Monitor'), ('Pizarra digital'),
-  ('Proyector'), ('Switch de red'), ('Tablet'), ('UPS'), ('Televisor'), ('Equipo de sonido'), ('Otro');
+  ('Proyector'), ('Switch de red'), ('Tablet'), ('UPS'), ('Televisor'), ('Equipo de sonido'), ('All in One'), ('Servidor'), ('Otro');

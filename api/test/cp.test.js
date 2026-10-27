@@ -2,6 +2,7 @@
 // Se ejecutan contra una base PostgreSQL de prueba que se recrea al inicio.
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tice:tice@localhost:5432/tice_test';
 process.env.INBOUND_TOKEN = 'token-de-prueba';
+process.env.DOMINIOS_CORREO = 'colegio.edu.pe';
 
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');

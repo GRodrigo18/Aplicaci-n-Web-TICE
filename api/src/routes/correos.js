@@ -4,7 +4,8 @@ const { query, tx } = require('../db');
 const { h, invalido, noEncontrado, HttpError } = require('../lib/errores');
 const { sedeDeConsulta, verificarSede } = require('../lib/auth');
 const { registrar } = require('../lib/bitacora');
-const { texto, entero, correoValido, prioridadItil } = require('../lib/util');
+const { texto, entero, correoValido, prioridadItil, dominioDe } = require('../lib/util');
+const { dominiosCorreo } = require('../config');
 const { proponerTicket } = require('../lib/propuesta');
 const { crearTicket } = require('./incidencias');
 
@@ -51,7 +52,8 @@ router.get('/', h(async (req, res) => {
     `SELECT c.*, s.nombre AS sede_nombre, i.numero AS ticket_numero, i.id AS ticket_id
        FROM correos_entrantes c JOIN sedes s ON s.id = c.sede_id LEFT JOIN incidencias i ON i.correo_id = c.id
       ${cond.length ? 'WHERE ' + cond.join(' AND ') : ''} ORDER BY c.recibido_en DESC LIMIT 300`, params);
-  res.json(rows);
+  // remitentes fuera del dominio institucional: se muestran marcados para revisarlos antes de abrir un ticket
+  res.json(rows.map((r) => ({ ...r, externo: !dominiosCorreo.includes(dominioDe(r.remitente)) })));
 }));
 
 // Registrar a mano un correo recibido (cuando el buzón aún no reenvía automáticamente)

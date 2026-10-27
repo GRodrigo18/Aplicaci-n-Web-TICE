@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Eye, EyeOff, Laptop, Lock, Mail, Monitor, Moon, Printer, Projector, ShieldCheck, Sun } from 'lucide-react';
 import { useSesion } from '../sesion.jsx';
+import { api } from '../api.js';
 import { Aviso } from '../components/ui.jsx';
 import { Logo } from '../components/Logo.jsx';
 
@@ -28,8 +29,44 @@ function Etiqueta({ codigo, Icono, semilla, className }) {
   );
 }
 
+// Botón oficial de Google Identity Services; solo aparece si la API tiene GOOGLE_CLIENT_ID
+function BotonGoogle({ clientId, onCredencial }) {
+  const caja = useRef(null);
+  useEffect(() => {
+    let vivo = true;
+    const pintar = () => {
+      if (!vivo || !window.google?.accounts?.id || !caja.current) return;
+      window.google.accounts.id.initialize({ client_id: clientId, callback: (r) => onCredencial(r.credential), ux_mode: 'popup' });
+      window.google.accounts.id.renderButton(caja.current, {
+        theme: 'outline', size: 'large', shape: 'pill', text: 'signin_with', locale: 'es', width: Math.min(caja.current.offsetWidth || 400, 400),
+      });
+    };
+    if (window.google?.accounts?.id) pintar();
+    else {
+      let s = document.getElementById('gsi-cliente');
+      if (!s) {
+        s = Object.assign(document.createElement('script'), { id: 'gsi-cliente', src: 'https://accounts.google.com/gsi/client', async: true });
+        document.head.appendChild(s);
+      }
+      s.addEventListener('load', pintar);
+    }
+    return () => { vivo = false; };
+  }, [clientId, onCredencial]);
+  return <div ref={caja} className="flex min-h-[44px] w-full justify-center" />;
+}
+
 export default function Login() {
-  const { iniciar } = useSesion();
+  const { iniciar, iniciarGoogle } = useSesion();
+  const [config, setConfig] = useState({ google_client_id: null, dominios: [] });
+  useEffect(() => { api.get('/auth/config').then(setConfig).catch(() => {}); }, []);
+  const dominio = config.dominios[0] || 'nslm.edu.pe';
+  const conGoogle = useRef(null);
+  conGoogle.current = async (credencial) => {
+    setError('');
+    setOcupado(true);
+    try { await iniciarGoogle(credencial); } catch (err) { setError(err.message); } finally { setOcupado(false); }
+  };
+  const [alGoogle] = useState(() => (c) => conGoogle.current(c));
   const [correo, setCorreo] = useState('');
   const [password, setPassword] = useState('');
   const [ver, setVer] = useState(false);
@@ -93,12 +130,20 @@ export default function Login() {
           <div className="mb-8 flex items-center gap-3 lg:hidden"><Logo /><span className="text-xl font-extrabold">TICE · Merced</span></div>
           <p className="text-[15px] font-semibold text-marca-500">Inventario · Mesa de ayuda · Pistoleo QR</p>
           <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-900">Bienvenido de vuelta</h1>
-          <p className="mt-3 text-[15px] text-slate-500">Ingresa con tu correo institucional. Verás la información de tu sede; el Director de TI ve las cinco.</p>
-          <label className="mt-8 block">
+          <p className="mt-3 text-[15px] text-slate-500">Ingresa con tu correo institucional <b className="font-semibold text-slate-700">@{dominio}</b>. El TICE ve la operación de su sede; el Jefe de TI, los indicadores de todas.</p>
+          {config.google_client_id && (
+            <>
+              <div className="mt-8"><BotonGoogle clientId={config.google_client_id} onCredencial={alGoogle} /></div>
+              <div className="my-6 flex items-center gap-3 text-xs font-medium uppercase tracking-wide text-slate-400">
+                <span className="h-px flex-1 bg-slate-200" />o con tu contraseña<span className="h-px flex-1 bg-slate-200" />
+              </div>
+            </>
+          )}
+          <label className={`${config.google_client_id ? '' : 'mt-8 '}block`}>
             <span className="etiqueta">Correo institucional</span>
             <span className="relative block">
               <Mail size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input className="entrada py-3 pl-11" type="email" autoComplete="username" value={correo} onChange={(e) => setCorreo(e.target.value)} required placeholder="usuario@colegio.edu.pe" />
+              <input className="entrada py-3 pl-11" type="email" autoComplete="username" value={correo} onChange={(e) => setCorreo(e.target.value)} required placeholder={`usuario@${dominio}`} />
             </span>
           </label>
           <label className="mt-5 block">

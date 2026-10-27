@@ -5,8 +5,44 @@ const { tx } = require('../db');
 const { h, HttpError, invalido } = require('../lib/errores');
 const { firmar, autenticar } = require('../lib/auth');
 const { registrar } = require('../lib/bitacora');
+const { verificarTokenGoogle } = require('../lib/google');
+const { dominioDe } = require('../lib/util');
 
 const router = express.Router();
+
+const datosSesion = (u) => ({
+  token: firmar(u),
+  usuario: { id: u.id, nombre: u.nombre, correo: u.correo, rol: u.rol, sede_id: u.sede_id, sede_nombre: u.sede_nombre },
+});
+
+// Datos públicos que la pantalla de inicio necesita antes de iniciar sesión
+router.get('/config', (_req, res) => {
+  res.json({ google_client_id: config.googleClientId || null, dominios: config.dominiosCorreo });
+});
+
+// Iniciar sesión con la cuenta de Google institucional. La cuenta debe estar registrada y activa en el sistema:
+// Google solo confirma quién es; el rol y la sede los da el sistema.
+router.post('/google', h(async (req, res) => {
+  if (!config.googleClientId) throw new HttpError(404, 'El inicio de sesión con Google no está configurado');
+  const credencial = String(req.body?.credential || '');
+  if (!credencial) throw invalido('Falta la credencial de Google');
+  const g = await verificarTokenGoogle(credencial, config.googleClientId);
+  if (!config.dominiosCorreo.includes(dominioDe(g.correo))) {
+    throw new HttpError(403, `Use su cuenta institucional (@${config.dominiosCorreo.join(' o @')})`);
+  }
+  const u = await tx(async (c) => {
+    const { rows: [usuario] } = await c.query(
+      `SELECT u.*, s.nombre AS sede_nombre FROM usuarios u LEFT JOIN sedes s ON s.id = u.sede_id WHERE lower(u.correo) = $1`, [g.correo]);
+    if (!usuario || !usuario.activo) return null;
+    if (usuario.bloqueado_hasta && new Date(usuario.bloqueado_hasta) > new Date()) {
+      throw new HttpError(423, 'Cuenta bloqueada temporalmente por intentos fallidos', { bloqueado: true });
+    }
+    await registrar(c, usuario, { entidad: 'usuario', entidadId: usuario.id, accion: 'LOGIN', detalle: { ip: req.ip, metodo: 'google' } });
+    return usuario;
+  });
+  if (!u) throw new HttpError(403, `${g.correo} no tiene una cuenta activa en el sistema. Pida al Jefe de TI que la registre.`);
+  res.json(datosSesion(u));
+}));
 
 // UC-01 Iniciar sesión
 router.post('/login', h(async (req, res) => {
@@ -54,11 +90,7 @@ router.post('/login', h(async (req, res) => {
 
   // los intentos fallidos se guardan aunque la respuesta sea un error
   if (resultado.error) throw resultado.error;
-  const u = resultado.usuario;
-  res.json({
-    token: firmar(u),
-    usuario: { id: u.id, nombre: u.nombre, correo: u.correo, rol: u.rol, sede_id: u.sede_id, sede_nombre: u.sede_nombre },
-  });
+  res.json(datosSesion(resultado.usuario));
 }));
 
 router.get('/me', autenticar, (req, res) => {

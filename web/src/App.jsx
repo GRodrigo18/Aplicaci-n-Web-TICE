@@ -18,10 +18,12 @@ import Bitacora from './pages/Bitacora.jsx';
 import Administracion from './pages/Administracion.jsx';
 import BaseDatos from './pages/BaseDatos.jsx';
 
+// tice: solo el TICE (operación); director: solo el Jefe de TI (gestión)
 const MENU = [
-  { a: '/', t: 'Dashboard', i: LayoutGrid },
+  { a: '/', t: 'Mi panel', i: LayoutGrid, tice: true },
+  { a: '/', t: 'Panel de gestión', i: LayoutGrid, director: true },
   { a: '/inventario', t: 'Inventario', i: Boxes },
-  { a: '/pistoleo', t: 'Pistoleo QR', i: ScanLine, insignia: 'QR' },
+  { a: '/pistoleo', t: 'Pistoleo QR', i: ScanLine, insignia: 'QR', tice: true },
   { a: '/mesa', t: 'Mesa de ayuda', i: LifeBuoy },
   { a: '/auditorias', t: 'Auditorías', i: ClipboardCheck },
   { a: '/bitacora', t: 'Bitácora', i: ScrollText, director: true },
@@ -104,7 +106,7 @@ function Layout({ children }) {
   const [buscar, setBuscar] = useState(false);
   const [oscuro, alternarTema] = useTema();
   const { pathname } = useLocation();
-  const items = MENU.filter((m) => !m.director || esDirector);
+  const items = MENU.filter((m) => (m.director ? esDirector : m.tice ? !esDirector : true));
   const actual = [...items].reverse().find((m) => (m.a === '/' ? pathname === '/' : pathname.startsWith(m.a)));
 
   useEffect(() => {

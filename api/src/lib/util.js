@@ -31,6 +31,15 @@ function opcion(valor, campo, opciones, { requerido = true } = {}) {
 }
 
 const correoValido = (c) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c);
+const dominioDe = (c) => String(c || '').toLowerCase().split('@')[1] || '';
+// Correo institucional: con formato válido y de uno de los dominios configurados
+function correoInstitucional(c, campo = 'correo') {
+  const { dominiosCorreo } = require('../config');
+  if (!correoValido(c)) throw invalido(`Correo inválido`, { campo });
+  if (!dominiosCorreo.includes(dominioDe(c))) {
+    throw invalido(`Use un correo institucional (@${dominiosCorreo.join(' o @')})`, { campo });
+  }
+}
 
 // Días hábiles (lunes a viernes) entre dos fechas, contando ambos extremos
 function diasHabiles(inicio, fin, zona = 'America/Lima') {
@@ -55,4 +64,4 @@ const MATRIZ = {
 };
 const prioridadItil = (impacto, urgencia) => MATRIZ[impacto]?.[urgencia] ?? null;
 
-module.exports = { texto, entero, opcion, correoValido, diasHabiles, prioridadItil, MATRIZ };
+module.exports = { texto, entero, opcion, correoValido, dominioDe, correoInstitucional, diasHabiles, prioridadItil, MATRIZ };

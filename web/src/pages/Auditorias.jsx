@@ -62,7 +62,10 @@ export default function Auditorias() {
   return (
     <div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
-        <p className="max-w-3xl text-[15px] text-slate-500">Cada auditoría registra cuándo empezó y terminó la verificación física (TAI) y cuántos equipos se encontraron en su ambiente registrado (TEL).</p>
+        <p className="max-w-3xl text-[15px] text-slate-500">
+          Cada auditoría registra cuándo empezó y terminó la verificación física (TAI) y cuántos equipos se encontraron en su ambiente registrado (TEL).
+          {esDirector && <> <b className="font-semibold text-slate-700">La ejecuta el TICE de cada sede</b> con el pistoleo QR desde su celular o PC; aquí ves los resultados.</>}
+        </p>
         {!esDirector && <button className="btn-primario" onClick={() => navegar('/pistoleo?modo=auditoria')}><ScanLine size={18} />Auditar con pistoleo</button>}
       </div>
       <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Ban, Calendar, Clock, LifeBuoy, MapPin, Pencil, Printer, Tag, User } from 'lucide-react';
+import { Ban, Calendar, Clock, Cpu, FileText, KeyRound, LifeBuoy, MapPin, Network, Pencil, Printer, Tag, User } from 'lucide-react';
+import { useSesion } from '../sesion.jsx';
 import { api } from '../api.js';
 import { Aviso, IconoTipo, Insignia, Panel, Segmentado, fecha, fechaHora, insigniaEquipo } from '../components/ui.jsx';
 import { ImagenQr } from '../components/Etiqueta.jsx';
@@ -7,7 +8,7 @@ import { FormBaja, FormEquipo, imprimirEtiquetas } from './Inventario.jsx';
 import { NuevoTicket } from './MesaAyuda.jsx';
 
 const ACCIONES = {
-  CREAR: (d) => (d.origen ? 'Migrado desde hoja de cálculo' : 'Registrado en el inventario'),
+  CREAR: (d) => (d.origen ? `Registrado por ${d.origen.toLowerCase()}${d.fila ? ` (fila ${d.fila})` : ''}` : 'Registrado en el inventario'),
   MODIFICAR: (d) => `Modificado: ${Object.keys(d.cambios || {}).join(', ')}`,
   BAJA: () => 'Dado de baja',
   TRASLADO: () => 'Trasladado',
@@ -41,37 +42,42 @@ export function FichaContenido({ e, onEditar, onBaja, onReportar }) {
   const [pestana, setPestana] = useState('historial');
   const historial = [...(e.historial || [])].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
   const datos = [
-    [Tag, 'Serie', e.serie], [MapPin, 'Ubicación', e.ubicacion], [User, 'Responsable', e.responsable],
-    [Calendar, 'Adquisición', fecha(e.fecha_adquisicion)], [Clock, 'Última verificación QR', fechaHora(e.ultima_verificacion)],
+    [Tag, 'Serie', e.serie, 'font-mono'], [Network, 'MAC', e.mac, 'font-mono'], [MapPin, 'Ubicación', e.ubicacion],
+    [User, 'Responsable', e.responsable], [KeyRound, 'Propiedad', { PROPIO: 'Propio', ALQUILADO: 'Alquilado' }[e.propiedad]],
+    [Calendar, 'Fecha de ingreso', fecha(e.fecha_adquisicion)], [FileText, 'Guía / factura', e.guia_factura],
+    [Clock, 'Última verificación QR', fechaHora(e.ultima_verificacion)],
   ];
   return (
     <div>
-      <div className="relative overflow-hidden border-b border-slate-100 p-7">
+      <div className="relative overflow-hidden border-b border-slate-100 p-5 sm:p-7">
         <div className="pointer-events-none absolute -right-10 -top-20 h-56 w-96 rounded-full bg-gradient-to-r from-marca-100/60 to-pink-100/50 blur-3xl" />
-        <div className="relative flex items-start justify-between gap-4">
+        <div className="relative flex flex-wrap-reverse items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 text-sm text-slate-600"><IconoTipo tipo={e.tipo} />{e.tipo} · {e.sede_nombre}</div>
-            <div className="mt-2 font-mono text-3xl font-semibold tracking-tight text-slate-900">{e.codigo}</div>
+            <div className="mt-2 break-all font-mono text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">{e.codigo}</div>
             <div className="mt-1 text-lg text-slate-500">{e.marca} {e.modelo}</div>
             <div className="mt-3">{insigniaEquipo(e)}</div>
           </div>
-          <div className="mr-8 text-center">
+          <div className="text-center sm:mr-8">
             <div className="rounded-2xl bg-white p-2 shadow-suave"><ImagenQr token={e.qr_token} tamano={120} /></div>
             <div className="mt-2 font-mono text-[11px] text-slate-400">{e.qr_token.slice(0, 12)}</div>
           </div>
         </div>
       </div>
       {e.estado === 'BAJA' && <div className="px-7 pt-5"><Aviso tipo="info">Dado de baja el {fechaHora(e.fecha_baja)}. Motivo: {e.motivo_baja}</Aviso></div>}
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-5 border-b border-slate-100 p-7">
-        {datos.map(([Icono, k, v]) => (
-          <div key={k}><dt className="flex items-center gap-1.5 text-sm text-slate-500"><Icono size={14} />{k}</dt><dd className="mt-0.5 text-[17px] font-medium text-slate-900">{v || '—'}</dd></div>
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-5 border-b border-slate-100 p-5 sm:p-7">
+        {datos.map(([Icono, k, v, clase = '']) => (
+          <div key={k} className="min-w-0"><dt className="flex items-center gap-1.5 text-sm text-slate-500"><Icono size={14} />{k}</dt><dd className={`mt-0.5 break-words text-[15px] font-medium text-slate-900 sm:text-[17px] ${clase}`}>{v || '—'}</dd></div>
         ))}
+        {e.caracteristicas && (
+          <div className="col-span-2"><dt className="flex items-center gap-1.5 text-sm text-slate-500"><Cpu size={14} />Características</dt><dd className="mt-0.5 text-[15px] text-slate-900">{e.caracteristicas}</dd></div>
+        )}
       </dl>
-      <div className="p-7">
+      <div className="p-5 sm:p-7">
         <div className="flex flex-wrap items-center gap-2">
           {e.estado !== 'BAJA' && onReportar && <button className="btn-primario" onClick={onReportar}><LifeBuoy size={17} />Reportar incidencia</button>}
           {e.estado !== 'BAJA' && onEditar && <button className="btn-secundario" onClick={onEditar}><Pencil size={16} />Editar</button>}
-          <button className="btn-secundario" onClick={() => imprimirEtiquetas([e])}><Printer size={16} />Imprimir etiqueta</button>
+          {onEditar && <button className="btn-secundario" onClick={() => imprimirEtiquetas([e])}><Printer size={16} />Imprimir etiqueta</button>}
           {e.estado !== 'BAJA' && onBaja && <button className="btn-texto-peligro" onClick={onBaja}><Ban size={16} />Dar de baja</button>}
         </div>
         {e.observaciones && <p className="mt-4 text-sm text-slate-600">{e.observaciones}</p>}
@@ -97,6 +103,7 @@ export function FichaContenido({ e, onEditar, onBaja, onReportar }) {
 }
 
 export default function FichaEquipo({ id, onCerrar, onCambio }) {
+  const { esDirector } = useSesion();
   const [e, setE] = useState(null);
   const [error, setError] = useState('');
   const [modal, setModal] = useState(null);
@@ -107,7 +114,9 @@ export default function FichaEquipo({ id, onCerrar, onCambio }) {
     <Panel onCerrar={onCerrar}>
       {error && <div className="p-7"><Aviso>{error}</Aviso></div>}
       {!e && !error && <div className="p-7 text-slate-500">Cargando…</div>}
-      {e && <FichaContenido e={e} onEditar={() => setModal('editar')} onBaja={() => setModal('baja')} onReportar={() => setModal('reportar')} />}
+      {/* el Jefe de TI consulta la ficha; registrar, editar y dar de baja es tarea del TICE de la sede */}
+      {e && (esDirector ? <FichaContenido e={e} />
+        : <FichaContenido e={e} onEditar={() => setModal('editar')} onBaja={() => setModal('baja')} onReportar={() => setModal('reportar')} />)}
       {modal === 'editar' && <FormEquipo equipo={e} onCerrar={() => setModal(null)} onGuardado={hecho} />}
       {modal === 'baja' && <FormBaja equipo={e} onCerrar={() => setModal(null)} onGuardado={hecho} />}
       {modal === 'reportar' && <NuevoTicket equipoInicial={e} onCerrar={() => setModal(null)} onCreado={hecho} />}

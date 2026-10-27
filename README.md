@@ -36,6 +36,20 @@ la aplicación web, con `JWT_SECRET` generado y los datos de demostración (`DAT
 En el plan gratuito el servicio se duerme tras 15 minutos sin uso (la primera visita tarda ~1 minuto) y la base
 gratuita vence a los 30 días.
 
+### Datos reales, dominio y Google
+
+- **Pasar a datos reales:** el Director entra a *Base de datos → Pasar a datos reales* (solo aparece mientras la base
+  tiene la demostración). Se borra todo y se crean la sede, el Jefe de TI y el TICE con una contraseña inicial.
+- **Inventario desde Excel:** el TICE usa *Inventario → Importar Excel* con el formato «INVENTARIO 2026»
+  (CÓDIGO, CATEGORÍA, MARCA, MODELO, NÚMERO DE SERIE, CARACTERÍSTICAS, MAC, ESTADO ACTUAL, UBICACIÓN, RESPONSABLE,
+  PROPIEDAD, FECHA DE INGRESO, GUIA/FACTURA, OBSERVACION, SEDE). Primero muestra la vista previa; las filas sin código
+  completo, estado, ubicación, categoría reconocida o de otra sede se excluyen con su motivo. No se completa ningún dato.
+- **Dominio:** `DOMINIOS_CORREO` (por defecto `nslm.edu.pe`) limita los correos de usuarios y buzones.
+- **Iniciar sesión con Google:** crear un *ID de cliente OAuth* (aplicación web) en Google Cloud con el origen
+  autorizado de la URL del sistema y ponerlo en `GOOGLE_CLIENT_ID`. Solo entran cuentas del dominio que estén
+  registradas y activas en el sistema.
+- **Consulta SQL:** *Base de datos → Consulta SQL* ejecuta `SELECT` en una transacción de solo lectura (5 s, 500 filas).
+
 ### Respaldo y restauración (RNF-07)
 
 El servicio `backup` ejecuta `pg_dump` todos los días a las 02:00, verifica que la copia sea legible con `pg_restore --list`

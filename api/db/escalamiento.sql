@@ -24,3 +24,19 @@ ON CONFLICT (nombre) DO NOTHING;
 -- Número de ticket con el año (TCK-2026-00001)
 ALTER TABLE incidencias ALTER COLUMN numero
   SET DEFAULT 'TCK-' || to_char(now(), 'YYYY') || '-' || lpad(nextval('incidencias_numero_seq')::text, 5, '0');
+
+-- Semana 10: datos operativos del inventario real de la Sede Central (Excel "INVENTARIO 2026")
+ALTER TABLE equipos ADD COLUMN IF NOT EXISTS caracteristicas TEXT;
+ALTER TABLE equipos ADD COLUMN IF NOT EXISTS mac VARCHAR(40);
+ALTER TABLE equipos ADD COLUMN IF NOT EXISTS propiedad VARCHAR(10);
+ALTER TABLE equipos ADD COLUMN IF NOT EXISTS responsable VARCHAR(120);
+ALTER TABLE equipos ADD COLUMN IF NOT EXISTS guia_factura VARCHAR(60);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'equipos_propiedad_check') THEN
+    ALTER TABLE equipos ADD CONSTRAINT equipos_propiedad_check CHECK (propiedad IN ('PROPIO', 'ALQUILADO'));
+  END IF;
+END $$;
+INSERT INTO tipos_equipo (nombre) VALUES ('All in One'), ('Servidor') ON CONFLICT (nombre) DO NOTHING;
+-- "Obsoleto" en el Excel: sigue en uso, por eso cuenta como disponible para la DT
+INSERT INTO estados_equipo (codigo, nombre, operativo) VALUES ('OBSOLETO', 'Obsoleto', TRUE) ON CONFLICT (codigo) DO NOTHING;

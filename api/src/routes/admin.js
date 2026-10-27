@@ -5,7 +5,7 @@ const { query, tx } = require('../db');
 const { h, invalido, noEncontrado, HttpError } = require('../lib/errores');
 const { soloDirector } = require('../lib/auth');
 const { registrar, diferencias } = require('../lib/bitacora');
-const { texto, entero, opcion, correoValido } = require('../lib/util');
+const { texto, entero, opcion, correoInstitucional } = require('../lib/util');
 
 const router = express.Router();
 
@@ -22,7 +22,7 @@ router.post('/sedes', soloDirector, h(async (req, res) => {
     direccion: texto(req.body.direccion, 'direccion', { max: 200 }),
     correo_buzon: texto(req.body.correo_buzon, 'correo_buzon', { requerido: true, max: 150 }).toLowerCase(),
   };
-  if (!correoValido(datos.correo_buzon)) throw invalido('Correo del buzón inválido');
+  correoInstitucional(datos.correo_buzon, 'correo_buzon');
   const sede = await tx(async (c) => {
     const { rows } = await c.query(
       'INSERT INTO sedes (codigo, nombre, direccion, correo_buzon) VALUES ($1,$2,$3,$4) RETURNING *',
@@ -45,7 +45,7 @@ router.put('/sedes/:id', soloDirector, h(async (req, res) => {
       correo_buzon: (texto(req.body.correo_buzon, 'correo_buzon', { max: 150 }) ?? antes.correo_buzon).toLowerCase(),
       activa: typeof req.body.activa === 'boolean' ? req.body.activa : antes.activa,
     };
-    if (!correoValido(d.correo_buzon)) throw invalido('Correo del buzón inválido');
+    if (d.correo_buzon !== antes.correo_buzon) correoInstitucional(d.correo_buzon, 'correo_buzon');
     const { rows: [despues] } = await c.query(
       'UPDATE sedes SET nombre=$2, direccion=$3, correo_buzon=$4, activa=$5 WHERE id=$1 RETURNING *',
       [id, d.nombre, d.direccion, d.correo_buzon, d.activa],
@@ -86,7 +86,7 @@ async function verificarUnTice(c, sedeId, exceptoId = 0) {
 router.post('/usuarios', soloDirector, h(async (req, res) => {
   const nombre = texto(req.body.nombre, 'nombre', { requerido: true, max: 120 });
   const correo = texto(req.body.correo, 'correo', { requerido: true, max: 150 }).toLowerCase();
-  if (!correoValido(correo)) throw invalido('Correo institucional inválido');
+  correoInstitucional(correo);
   const rol = opcion(req.body.rol, 'rol', ['DIRECTOR', 'TICE']);
   const sedeId = rol === 'TICE' ? entero(req.body.sede_id, 'sede_id', { requerido: true }) : null;
   validarPassword(req.body.password);

@@ -8,7 +8,7 @@ import { api, qs } from '../api.js';
 import { useSesion } from '../sesion.jsx';
 import { Aviso, Avatar, COLOR_PRIORIDAD, NIVELES, hace } from '../components/ui.jsx';
 import { describir } from '../components/describir.js';
-import { NuevoTicket } from './MesaAyuda.jsx';
+import PanelOperativo from './PanelOperativo.jsx';
 
 const ICONOS_KPI = { MTTR: Timer, TAI: ClipboardCheck, TEL: Target, CSLA: ShieldCheck, DT: Activity };
 const fmt = (v, unidad) => {
@@ -109,7 +109,7 @@ function GraficoMttr({ datos, base, meta }) {
   );
 }
 
-const COLOR_ESTADO = { OPERATIVO: '#10b981', MANTENIMIENTO: '#f59e0b', AVERIADO: '#ef4444', BAJA: '#94a3b8' };
+const COLOR_ESTADO = { OPERATIVO: '#10b981', MANTENIMIENTO: '#f59e0b', AVERIADO: '#ef4444', OBSOLETO: '#fb923c', BAJA: '#94a3b8' };
 
 function Dona({ segmentos, total }) {
   const r = 58; const c = 2 * Math.PI * r;
@@ -149,13 +149,18 @@ const ICONO_ACTIVIDAD = { CREAR: Plus, CAMBIO_ESTADO: RefreshCw, RESOLVER: Star,
 const saludo = () => { const h = new Date().getHours(); return h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches'; };
 const hoyMenos = (d) => { const f = new Date(Date.now() - d * 86400000); return f.toLocaleDateString('en-CA'); };
 
+// El TICE ve su panel operativo; el Jefe de TI, el panel de gestión con los indicadores
 export default function Dashboard() {
+  const { esDirector } = useSesion();
+  return esDirector ? <PanelGestion /> : <PanelOperativo />;
+}
+
+function PanelGestion() {
   const { usuario, sedeParam, sedeSel, sedes, esDirector } = useSesion();
   const navegar = useNavigate();
   const [d, setD] = useState(null);
   const [error, setError] = useState('');
   const [dias, setDias] = useState(30);
-  const [nuevo, setNuevo] = useState(false);
   const [cargado, setCargado] = useState(null);
 
   useEffect(() => {
@@ -184,7 +189,7 @@ export default function Dashboard() {
   const bajo = mttr.valor !== null && mttr.base ? Math.round(((mttr.base - mttr.valor) / mttr.base) * 100) : null;
   const sedeNombre = esDirector ? (sedes.find((s) => String(s.id) === String(sedeSel))?.nombre || 'Todas las sedes') : usuario.sede_nombre;
   const maxTipo = Math.max(1, ...d.equipos_por_tipo.map((t) => t.n));
-  const orden = ['OPERATIVO', 'MANTENIMIENTO', 'AVERIADO', 'BAJA'];
+  const orden = ['OPERATIVO', 'MANTENIMIENTO', 'AVERIADO', 'OBSOLETO', 'BAJA'];
   const estados = orden.map((e) => d.equipos_por_estado.find((x) => x.estado === e) || { estado: e, nombre: e, n: 0 });
 
   return (
@@ -207,8 +212,8 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex flex-col gap-3">
-            {!esDirector && <button className="btn-primario" onClick={() => navegar('/pistoleo')}><ScanLine size={18} />Pistolear equipos</button>}
-            <button className="btn-secundario" onClick={() => setNuevo(true)}><LifeBuoy size={18} />Nuevo ticket</button>
+            <button className="btn-secundario" onClick={() => navegar('/auditorias')}><ClipboardCheck size={18} />Ver auditorías</button>
+            <button className="btn-secundario" onClick={() => navegar('/inventario')}><Boxes size={18} />Resumen del inventario</button>
           </div>
         </div>
       </section>
@@ -302,8 +307,8 @@ export default function Dashboard() {
 
       {esDirector && !sedeSel && (
         <section className="tarjeta p-6">
-          <Cabecera icono={Boxes} titulo="Equipos por sede" sub="Consolidado de las cinco sedes" />
-          <div className="grid gap-3 sm:grid-cols-5">
+          <Cabecera icono={Boxes} titulo="Equipos por sede" sub="Consolidado de todas las sedes" />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {sedes.map((s) => {
               const filas = d.equipos.por_sede.filter((x) => x.id === s.id);
               const total = filas.reduce((a, b) => a + b.n, 0);
@@ -328,7 +333,6 @@ export default function Dashboard() {
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
         Dashboard cargado en {cargado ? cargado.s.toFixed(2) : '—'} s con {resumen.totalEquipos} equipos (RNF-02: menos de 2 s)
       </p>
-      {nuevo && <NuevoTicket onCerrar={() => setNuevo(false)} onCreado={() => { setNuevo(false); navegar('/mesa'); }} />}
     </div>
   );
 }

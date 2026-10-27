@@ -44,6 +44,7 @@ const COLORES = {
   OPERATIVO: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
   MANTENIMIENTO: 'bg-amber-50 text-amber-700 ring-amber-200',
   AVERIADO: 'bg-red-50 text-red-700 ring-red-200',
+  OBSOLETO: 'bg-orange-50 text-orange-700 ring-orange-200',
   BAJA_EQUIPO: 'bg-slate-100 text-slate-500 ring-slate-200',
   PENDIENTE: 'bg-amber-50 text-amber-700 ring-amber-200',
   EN_PROCESO: 'bg-blue-50 text-blue-700 ring-blue-200',
@@ -58,7 +59,7 @@ const COLORES = {
   DESCARTADO: 'bg-slate-100 text-slate-600 ring-slate-200',
 };
 const PUNTO = {
-  OPERATIVO: 'bg-emerald-500', MANTENIMIENTO: 'bg-amber-500', AVERIADO: 'bg-red-500', BAJA_EQUIPO: 'bg-slate-400',
+  OPERATIVO: 'bg-emerald-500', MANTENIMIENTO: 'bg-amber-500', AVERIADO: 'bg-red-500', OBSOLETO: 'bg-orange-400', BAJA_EQUIPO: 'bg-slate-400',
   EN_CURSO: 'bg-blue-500', FINALIZADA: 'bg-emerald-500', PENDIENTE: 'bg-amber-500', EN_PROCESO: 'bg-blue-500', RESUELTO: 'bg-emerald-500',
 };
 

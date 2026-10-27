@@ -49,7 +49,7 @@ function ModoIdentificar() {
         <Lecturas titulo="Lecturas de esta sesión" filas={lecturas} />
       </div>
       <div className="tarjeta self-start overflow-hidden">
-        {e ? <FichaContenido e={e} onReportar={() => setReportar(true)} />
+        {e ? <FichaContenido e={e} onReportar={esDirector ? undefined : () => setReportar(true)} />
           : <Vacio className="py-24"><ScanLine className="mx-auto mb-3 text-slate-300" size={40} />Lee una etiqueta para ver la ficha del equipo, su historial y sus tickets.</Vacio>}
       </div>
       {reportar && <NuevoTicket equipoInicial={e} onCerrar={() => setReportar(false)} onCreado={() => { setReportar(false); leer(e.qr_token); }} />}

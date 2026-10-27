@@ -10,7 +10,11 @@ function crearApp() {
   const app = express();
   app.set('trust proxy', 1);
   // con la web servida aquí, la CSP por defecto de helmet bloquearía la cámara y los estilos de la SPA (Nginx no la usa)
-  app.use(helmet(config.webDist ? { contentSecurityPolicy: false } : {}));
+  // "same-origin-allow-popups" deja abrir la ventana de "Iniciar sesión con Google"
+  app.use(helmet({
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+    ...(config.webDist ? { contentSecurityPolicy: false } : {}),
+  }));
   app.use(express.json({ limit: '1mb' }));
 
   app.get('/api/salud', (_req, res) => res.json({ ok: true }));

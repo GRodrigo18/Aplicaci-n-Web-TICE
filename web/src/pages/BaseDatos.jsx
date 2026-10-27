@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Database, Lock, Table2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Database, FlaskConical, Lock, Play, Table2, Terminal } from 'lucide-react';
 import { api, qs } from '../api.js';
-import { Aviso, Vacio } from '../components/ui.jsx';
+import { useSesion } from '../sesion.jsx';
+import { Aviso, Campo, Modal, Segmentado, Vacio } from '../components/ui.jsx';
 
 // Visor de solo lectura de las tablas de PostgreSQL (Director de TI)
 function celda(v) {
@@ -13,7 +14,112 @@ function celda(v) {
   return s;
 }
 
+const EJEMPLOS = [
+  ['Equipos por estado', 'SELECT estado, count(*) AS equipos\nFROM equipos\nGROUP BY estado\nORDER BY equipos DESC;'],
+  ['Últimos equipos registrados', 'SELECT codigo, marca, modelo, ubicacion, creado_en\nFROM equipos\nORDER BY creado_en DESC\nLIMIT 20;'],
+  ['Últimas operaciones (bitácora)', 'SELECT secuencia, fecha, usuario_correo, entidad, accion\nFROM logs_auditoria\nORDER BY secuencia DESC\nLIMIT 20;'],
+  ['Tickets abiertos', "SELECT numero, asunto, prioridad, estado, fecha_registro\nFROM incidencias\nWHERE estado IN ('PENDIENTE', 'EN_PROCESO')\nORDER BY fecha_registro;"],
+];
+
+// Consulta SQL de solo lectura contra PostgreSQL (la API la ejecuta en una transacción READ ONLY)
+function ConsultaSql() {
+  const [sql, setSql] = useState(EJEMPLOS[0][1]);
+  const [r, setR] = useState(null);
+  const [error, setError] = useState('');
+  const [ocupado, setOcupado] = useState(false);
+  const ejecutar = async () => {
+    setError('');
+    setOcupado(true);
+    try { setR(await api.post('/basedatos/consulta', { sql })); } catch (e) { setError(e.message); setR(null); } finally { setOcupado(false); }
+  };
+  return (
+    <div className="space-y-4">
+      <div className="tarjeta p-4">
+        <div className="mb-3 flex flex-wrap gap-2">
+          {EJEMPLOS.map(([t, q]) => <button key={t} className="chip" onClick={() => setSql(q)}>{t}</button>)}
+        </div>
+        <textarea className="entrada min-h-[140px] font-mono text-sm" spellCheck={false} value={sql} onChange={(e) => setSql(e.target.value)}
+          onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') ejecutar(); }} />
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button className="btn-primario" onClick={ejecutar} disabled={ocupado || !sql.trim()}><Play size={16} />Ejecutar</button>
+          <span className="text-xs text-slate-500">Ctrl + Enter · Solo lectura: INSERT, UPDATE y DELETE se rechazan · máximo 500 filas y 5 s</span>
+        </div>
+      </div>
+      <Aviso>{error}</Aviso>
+      {r && (
+        <div>
+          <div className="mb-2 text-sm text-slate-500">{r.filas.length} fila{r.filas.length === 1 ? '' : 's'}{r.truncado ? ' (se muestran las primeras 500)' : ''} · {r.ms} ms</div>
+          <div className="tarjeta max-h-[60vh] overflow-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="sticky top-0 bg-white"><tr>{r.columnas.map((c, i) => <th key={i} className="whitespace-nowrap border-b border-slate-100 px-3 py-2.5 font-semibold text-slate-600">{c}</th>)}</tr></thead>
+              <tbody>{r.filas.map((f, i) => (
+                <tr key={i} className="hover:bg-slate-50">{f.map((v, j) => <td key={j} className="max-w-[280px] truncate whitespace-nowrap border-t border-slate-100 px-3 py-2 text-slate-700">{celda(v)}</td>)}</tr>
+              ))}</tbody>
+            </table>
+            {!r.filas.length && <Vacio>La consulta no devolvió filas</Vacio>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Borra la demostración y deja la sede, el Jefe de TI y el TICE reales (solo mientras la base tiene la demo)
+function PasarADatosReales({ onCerrar }) {
+  const { cerrar } = useSesion();
+  const [f, setF] = useState({ sede_codigo: 'CEN', sede_nombre: 'Sede Central', correo_buzon: '', director_nombre: '', director_correo: '', tice_nombre: '', tice_correo: '', password: '', confirmacion: '' });
+  const [error, setError] = useState('');
+  const [hecho, setHecho] = useState(null);
+  const [ocupado, setOcupado] = useState(false);
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const enviar = async (e) => {
+    e.preventDefault();
+    setError('');
+    setOcupado(true);
+    try {
+      setHecho(await api.post('/basedatos/datos-reales', {
+        sede: { codigo: f.sede_codigo, nombre: f.sede_nombre, correo_buzon: f.correo_buzon },
+        director: { nombre: f.director_nombre, correo: f.director_correo },
+        tice: { nombre: f.tice_nombre, correo: f.tice_correo },
+        password: f.password, confirmacion: f.confirmacion,
+      }));
+    } catch (x) { setError(x.message); } finally { setOcupado(false); }
+  };
+  if (hecho) {
+    return (
+      <Modal titulo="Base lista con datos reales" onCerrar={cerrar}>
+        <Aviso tipo="ok">Se borró la demostración. Quedaron la {hecho.sede}, el Jefe de TI ({hecho.director}) y el TICE ({hecho.tice}).</Aviso>
+        <p className="mt-3 text-sm text-slate-600">Tu sesión de demostración ya no existe. Ingresa como TICE e importa el Excel del inventario desde <b>Inventario → Importar Excel</b>.</p>
+        <div className="mt-5 flex justify-end"><button className="btn-primario" onClick={cerrar}>Ir al inicio de sesión</button></div>
+      </Modal>
+    );
+  }
+  return (
+    <Modal titulo="Pasar a datos reales" onCerrar={onCerrar} ancho="max-w-2xl">
+      <form onSubmit={enviar} className="grid gap-4 sm:grid-cols-2">
+        <div className="sm:col-span-2"><Aviso tipo="info">Se borran todos los datos de demostración (equipos, tickets, correos, auditorías, usuarios y bitácora) y se crean la sede y las dos cuentas reales. No se puede deshacer.</Aviso></div>
+        <Campo etiqueta="Código de la sede *"><input className="entrada font-mono uppercase" value={f.sede_codigo} onChange={set('sede_codigo')} required /></Campo>
+        <Campo etiqueta="Nombre de la sede *"><input className="entrada" value={f.sede_nombre} onChange={set('sede_nombre')} required /></Campo>
+        <div className="sm:col-span-2"><Campo etiqueta="Buzón TICE de la sede *"><input type="email" className="entrada" value={f.correo_buzon} onChange={set('correo_buzon')} placeholder="tice.central@…" required /></Campo></div>
+        <Campo etiqueta="Jefe de TI: nombre *"><input className="entrada" value={f.director_nombre} onChange={set('director_nombre')} required /></Campo>
+        <Campo etiqueta="Jefe de TI: correo *"><input type="email" className="entrada" value={f.director_correo} onChange={set('director_correo')} required /></Campo>
+        <Campo etiqueta="TICE de la sede: nombre *"><input className="entrada" value={f.tice_nombre} onChange={set('tice_nombre')} required /></Campo>
+        <Campo etiqueta="TICE de la sede: correo *"><input type="email" className="entrada" value={f.tice_correo} onChange={set('tice_correo')} required /></Campo>
+        <Campo etiqueta="Contraseña inicial de ambos (mín. 8) *"><input type="password" className="entrada" value={f.password} onChange={set('password')} minLength={8} required autoComplete="new-password" /></Campo>
+        <Campo etiqueta="Escribe BORRAR DEMO para confirmar *"><input className="entrada font-mono" value={f.confirmacion} onChange={set('confirmacion')} required /></Campo>
+        <div className="sm:col-span-2"><Aviso>{error}</Aviso></div>
+        <div className="flex justify-end gap-2 sm:col-span-2">
+          <button type="button" className="btn-secundario" onClick={onCerrar}>Cancelar</button>
+          <button className="btn-peligro" disabled={ocupado || f.confirmacion !== 'BORRAR DEMO'}>{ocupado ? 'Preparando…' : 'Borrar demo y crear cuentas'}</button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 export default function BaseDatos() {
+  const [vista, setVista] = useState('tablas');
+  const [reales, setReales] = useState(false);
   const [resumen, setResumen] = useState(null);
   const [tabla, setTabla] = useState('');
   const [pagina, setPagina] = useState(1);
@@ -40,6 +146,19 @@ export default function BaseDatos() {
         </div>
         <span className="flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600"><Lock size={13} />Solo lectura · sin contraseñas</span>
       </section>
+      {resumen.datos_demo && (
+        <section className="mb-5 flex flex-wrap items-center gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <FlaskConical size={22} className="text-amber-600" />
+          <div className="min-w-0 flex-1">
+            <div className="font-semibold text-amber-900">La base tiene datos de demostración</div>
+            <div className="text-sm text-amber-800">Cuando quieras trabajar con la información real, bórrala y crea la sede y las cuentas reales.</div>
+          </div>
+          <button className="btn-secundario" onClick={() => setReales(true)}>Pasar a datos reales</button>
+        </section>
+      )}
+      {reales && <PasarADatosReales onCerrar={() => setReales(false)} />}
+      <Segmentado className="mb-5" valor={vista} onChange={setVista} opciones={[['tablas', 'Tablas', Table2], ['sql', 'Consulta SQL', Terminal]]} />
+      {vista === 'sql' ? <ConsultaSql /> : (
       <div className="grid gap-5 lg:grid-cols-[260px_1fr]">
         <nav className="tarjeta self-start p-2">
           {resumen.tablas.map((t) => (
@@ -73,6 +192,7 @@ export default function BaseDatos() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

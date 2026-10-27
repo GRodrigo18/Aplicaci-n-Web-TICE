@@ -24,7 +24,11 @@ export default function Lector({ onLectura, deshabilitado, compacto, aviso }) {
     onLectura(valor);
   };
 
-  useEffect(() => { if (!camara && !compacto) entrada.current?.focus(); }, [camara, deshabilitado, compacto]);
+  // en la PC el campo queda listo para la pistola; en el celular no se enfoca solo para no abrir el teclado encima de la cámara
+  useEffect(() => {
+    const punteroFino = window.matchMedia?.('(pointer: fine)').matches;
+    if (!camara && !compacto && punteroFino) entrada.current?.focus();
+  }, [camara, deshabilitado, compacto]);
 
   useEffect(() => {
     if (!camara) return undefined;
@@ -33,7 +37,9 @@ export default function Lector({ onLectura, deshabilitado, compacto, aviso }) {
       if (!activo) return;
       const e = new Html5Qrcode(idCamara.current);
       escaner.current = e;
-      e.start({ facingMode: 'environment' }, { fps: 10, qrbox: 220 }, (t) => emitir(t), () => {})
+      // recuadro de lectura proporcional a la pantalla (en el celular ocupa casi todo el ancho)
+      const qrbox = (w, h) => { const lado = Math.max(160, Math.floor(Math.min(w, h) * 0.7)); return { width: lado, height: lado }; };
+      e.start({ facingMode: 'environment' }, { fps: 10, qrbox, aspectRatio: window.innerWidth < 640 ? 1 : 16 / 11 }, (t) => emitir(t), () => {})
         .catch((err) => {
           setError(window.isSecureContext
             ? `No se pudo abrir la cámara: ${err?.message || err}`
@@ -70,7 +76,7 @@ export default function Lector({ onLectura, deshabilitado, compacto, aviso }) {
     <form onSubmit={(e) => { e.preventDefault(); emitir(texto); setTexto(''); }} className="flex gap-2">
       <div className="relative flex-1">
         <Keyboard size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input ref={entrada} className="entrada pl-11 font-mono" placeholder="Escribe el código (SC-PC-0001) y Enter"
+        <input ref={entrada} className="entrada pl-11 font-mono" placeholder="Código del equipo y Enter"
           value={texto} onChange={(e) => setTexto(e.target.value)} disabled={deshabilitado} autoComplete="off" />
       </div>
       {compacto
@@ -92,10 +98,10 @@ export default function Lector({ onLectura, deshabilitado, compacto, aviso }) {
 
   return (
     <div className="space-y-4">
-      <div className="relative aspect-[16/11] overflow-hidden rounded-2xl bg-[#05070f]">
+      <div className="relative aspect-square overflow-hidden rounded-2xl bg-[#05070f] sm:aspect-[16/11]">
         <div className="cuadricula absolute inset-0" />
         <span className="absolute left-4 top-4 z-10 flex items-center gap-1.5 rounded-lg bg-black/60 px-2.5 py-1 text-xs font-semibold text-white">
-          <Zap size={13} className="text-cyan-300" />{deshabilitado ? 'Elige el ambiente' : 'Pistola lista'}
+          <Zap size={13} className="text-cyan-300" />{deshabilitado ? 'Primero escribe el ambiente' : 'Lector listo'}
         </span>
         {camara ? (
           <>
@@ -104,13 +110,13 @@ export default function Lector({ onLectura, deshabilitado, compacto, aviso }) {
           </>
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-            {['left-[22%] top-[14%] border-l-4 border-t-4 rounded-tl-2xl', 'right-[22%] top-[14%] border-r-4 border-t-4 rounded-tr-2xl',
-              'left-[22%] bottom-[14%] border-b-4 border-l-4 rounded-bl-2xl', 'right-[22%] bottom-[14%] border-b-4 border-r-4 rounded-br-2xl'].map((c) => (
-              <span key={c} className={`absolute h-14 w-14 border-cyan-400 ${c}`} />
+            {['left-[8%] top-[8%] border-l-4 border-t-4 rounded-tl-2xl sm:left-[22%] sm:top-[14%]', 'right-[8%] top-[8%] border-r-4 border-t-4 rounded-tr-2xl sm:right-[22%] sm:top-[14%]',
+              'left-[8%] bottom-[8%] border-b-4 border-l-4 rounded-bl-2xl sm:left-[22%] sm:bottom-[14%]', 'right-[8%] bottom-[8%] border-b-4 border-r-4 rounded-br-2xl sm:right-[22%] sm:bottom-[14%]'].map((c) => (
+              <span key={c} className={`pointer-events-none absolute h-10 w-10 border-cyan-400 sm:h-14 sm:w-14 ${c}`} />
             ))}
-            <div className="text-2xl font-bold text-white">Apunta al código QR del equipo</div>
-            <div className="mt-1 max-w-sm text-slate-400">o dispara la pistola lectora: el sistema la detecta sola.</div>
-            <button className="btn-primario mt-6" onClick={() => { setError(''); setCamara(true); }} disabled={deshabilitado}><Camera size={18} />Activar cámara</button>
+            <div className="max-w-[70%] text-lg font-bold leading-snug text-white sm:max-w-none sm:text-2xl">Apunta al código QR del equipo</div>
+            <div className="mt-1 max-w-[70%] text-sm text-slate-400 sm:max-w-sm sm:text-base">o usa la pistola lectora: el sistema la detecta sola.</div>
+            <button className="btn-primario mt-5 sm:mt-6" onClick={() => { setError(''); setCamara(true); }} disabled={deshabilitado}><Camera size={18} />Activar cámara</button>
           </div>
         )}
       </div>

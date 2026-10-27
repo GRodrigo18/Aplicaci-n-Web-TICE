@@ -21,6 +21,10 @@ const config = {
   // Despliegue en un solo servicio (Render): la API sirve también la aplicación web compilada
   webDist: env.WEB_DIST || '',
   datosDemo: env.DATOS_DEMO === 'true',
+  // Solo se aceptan cuentas y buzones del dominio institucional (varios separados por coma)
+  dominiosCorreo: (env.DOMINIOS_CORREO || 'nslm.edu.pe').split(',').map((d) => d.trim().toLowerCase()).filter(Boolean),
+  // ID de cliente OAuth de Google Cloud; sin él no se muestra "Iniciar sesión con Google"
+  googleClientId: env.GOOGLE_CLIENT_ID || '',
 };
 
 if (!config.jwtSecret) {

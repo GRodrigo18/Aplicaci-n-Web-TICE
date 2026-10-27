@@ -21,7 +21,7 @@ function FormUsuario({ usuario, onCerrar, onGuardado }) {
     <Modal titulo={nuevo ? 'Nuevo usuario' : `Editar ${usuario.correo}`} onCerrar={onCerrar}>
       <form onSubmit={guardar} className="space-y-3">
         <Campo etiqueta="Nombre *"><input className="entrada" value={f.nombre} onChange={set('nombre')} required /></Campo>
-        {nuevo && <Campo etiqueta="Correo institucional *"><input type="email" className="entrada" value={f.correo} onChange={set('correo')} required /></Campo>}
+        {nuevo && <Campo etiqueta="Correo institucional *" ayuda="Solo se aceptan correos del dominio del colegio. Con ese correo también puede entrar con Google."><input type="email" className="entrada" value={f.correo} onChange={set('correo')} required /></Campo>}
         <Campo etiqueta="Rol">
           <select className="entrada" value={f.rol} onChange={set('rol')}><option value="TICE">Usuario TICE</option><option value="DIRECTOR">Director de TI</option></select>
         </Campo>

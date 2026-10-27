@@ -31,19 +31,20 @@ export function SesionProvider({ children }) {
       .finally(() => setCargando(false));
   }, [cerrar, cargarContexto]);
 
-  const iniciar = async (correo, password) => {
-    const r = await api.post('/auth/login', { correo, password });
+  const abrirSesion = async (r) => {
     guardarToken(r.token);
     setUsuario(r.usuario);
     await cargarContexto();
   };
+  const iniciar = async (correo, password) => abrirSesion(await api.post('/auth/login', { correo, password }));
+  const iniciarGoogle = async (credential) => abrirSesion(await api.post('/auth/google', { credential }));
 
   const esDirector = usuario?.rol === 'DIRECTOR';
   // parámetro sede_id para las consultas (el TICE siempre ve su sede; la API lo fuerza)
   const sedeParam = esDirector ? sedeSel : '';
 
   return (
-    <Ctx.Provider value={{ usuario, cargando, iniciar, cerrar, catalogos, sedes, setSedes, esDirector, sedeSel, setSedeSel, sedeParam, recargarContexto: cargarContexto }}>
+    <Ctx.Provider value={{ usuario, cargando, iniciar, iniciarGoogle, cerrar, catalogos, sedes, setSedes, esDirector, sedeSel, setSedeSel, sedeParam, recargarContexto: cargarContexto }}>
       {children}
     </Ctx.Provider>
   );
