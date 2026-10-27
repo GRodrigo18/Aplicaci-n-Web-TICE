@@ -137,6 +137,13 @@ tenga el pre-test; hasta entonces el dashboard muestra "por medir".
 - `operaciones_bd`: triggers cuentan cada escritura en `equipos` e `incidencias`; la vista `operaciones_sin_bitacora`
   muestra las transacciones que escribieron sin dejar registro (por ejemplo, un cambio hecho por fuera del sistema).
 
+### Base de datos que no vence (Supabase)
+
+La base gratuita de Render se borra a los 30 días. `DATABASE_URL` se define a mano en *sistema-tice → Environment*,
+así que puede apuntar a otro PostgreSQL, por ejemplo un proyecto gratuito de Supabase. Use la cadena del
+**Session pooler** (la conexión directa de Supabase es solo IPv6). Al arrancar con una base vacía el sistema crea
+las tablas solo. El Table Editor y el SQL Editor de Supabase sirven para ver y editar los datos en la web.
+
 ### Administrador de la base de datos aparte (Adminer)
 
 `render.yaml` crea el servicio `visor-bd-tice` con [Adminer](https://www.adminer.org/) (`Dockerfile.adminer`): una

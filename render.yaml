@@ -17,17 +17,17 @@ services:
     dockerContext: .
     healthCheckPath: /api/salud
     envVars:
+      # Cadena de conexión de PostgreSQL. Se escribe en Environment (por ejemplo la del Session pooler de
+      # Supabase, que no vence); Render no la sobrescribe al sincronizar el Blueprint.
       - key: DATABASE_URL
-        fromDatabase:
-          name: tice-db
-          property: connectionString
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: DATOS_DEMO
         value: "true"
 
   # Administrador de la base de datos en el navegador (Adminer), separado del sistema.
-  # Se entra con el usuario y la contraseña de tice-db (Connect > Internal).
+  # Se entra con el usuario y la contraseña de la base; ADMINER_DEFAULT_SERVER es su servidor.
   - type: web
     name: visor-bd-tice
     runtime: docker
@@ -37,6 +37,4 @@ services:
     dockerContext: .
     envVars:
       - key: ADMINER_DEFAULT_SERVER
-        fromDatabase:
-          name: tice-db
-          property: host
+        sync: false
