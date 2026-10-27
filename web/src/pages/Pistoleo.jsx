@@ -124,7 +124,7 @@ function ModoAuditoria() {
           clave: l.id, codigo: l.codigo, texto: l.ambiente, derecha: <Insignia valor={l.resultado} texto={l.resultado === 'ENCONTRADO' ? 'Encontrado' : 'Reubicado'} />,
           icono: l.resultado === 'ENCONTRADO' ? undefined : <CornerDownRight size={18} className="text-amber-500" />,
         }))} />
-        <button className="btn-primario w-full py-3" onClick={() => setConfirmar(true)}>Finalizar auditoría y calcular TEL y TAI</button>
+        <button className="btn-primario w-full py-3" onClick={() => setConfirmar(true)}>Finalizar auditoría y calcular el TAI</button>
       </div>
       {confirmar && <Confirmar titulo="Finalizar auditoría" textoBoton="Finalizar"
         mensaje={`Se leyeron ${lecturas.length} de ${auditoria.equipos_esperados} equipos. Los equipos no leídos quedarán como faltantes.`}

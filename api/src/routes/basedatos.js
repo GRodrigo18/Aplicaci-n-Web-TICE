@@ -2,12 +2,17 @@
 // Los nombres de tabla se validan contra el catálogo de PostgreSQL y nunca se muestran los hashes de contraseña.
 const express = require('express');
 const crypto = require('crypto');
+const { execFile } = require('child_process');
+const { promisify } = require('util');
+const config = require('../config');
 const { query, pool } = require('../db');
+const { registrar } = require('../lib/bitacora');
 const { h, noEncontrado, invalido, HttpError } = require('../lib/errores');
 const { entero, texto } = require('../lib/util');
 const { instalarDatosReales, validarInstalacion } = require('../scripts/instalar');
 
 const router = express.Router();
+const execFileP = promisify(execFile);
 const OCULTAS = { usuarios: ['password_hash'] };
 const POR_PAGINA = 50;
 
@@ -67,6 +72,26 @@ router.post('/datos-reales', h(async (req, res) => {
   validarInstalacion(req.body);
   const r = await instalarDatosReales(req.body, req.usuario);
   res.json({ ok: true, director: r.director.correo, tice: r.tice.correo, sede: r.sede.nombre });
+}));
+
+// RNF-07 Respaldo: copia completa del esquema public (estructura, datos, triggers y secuencias) en un archivo .sql
+// generado con pg_dump. Se restaura ejecutándolo en una base vacía. La descarga queda en la bitácora.
+router.get('/respaldo', h(async (req, res) => {
+  let sql;
+  try {
+    const { stdout } = await execFileP('pg_dump', ['--schema=public', '--no-owner', '--no-privileges', '--encoding=UTF8', config.databaseUrl],
+      { maxBuffer: 512 * 1024 * 1024, timeout: 120000 });
+    // El esquema public ya existe en la base de destino (y en Supabase no se puede comentar): se omiten esas dos líneas
+    sql = stdout.replace(/^CREATE SCHEMA public;\n/m, '').replace(/^COMMENT ON SCHEMA public IS .*\n/m, '');
+  } catch (err) {
+    if (err.code === 'ENOENT') throw new HttpError(501, 'El servidor no tiene pg_dump instalado');
+    throw new HttpError(500, `No se pudo generar el respaldo: ${String(err.stderr || err.message).split('\n')[0]}`);
+  }
+  const archivo = `respaldo_tice_${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}.sql`;
+  await registrar(pool, req.usuario, { entidad: 'sistema', accion: 'RESPALDO', detalle: { archivo, bytes: Buffer.byteLength(sql) } });
+  res.set('Content-Type', 'application/sql; charset=utf-8');
+  res.set('Content-Disposition', `attachment; filename="${archivo}"`);
+  res.send(sql);
 }));
 
 router.get('/:tabla', h(async (req, res) => {

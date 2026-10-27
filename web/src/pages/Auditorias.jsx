@@ -17,7 +17,7 @@ function Detalle({ id }) {
   const encontrados = a.equipos_encontrados ?? a.items.filter((i) => i.resultado === 'ENCONTRADO').length;
   const reubicados = a.equipos_reubicados ?? a.items.filter((i) => i.resultado === 'REUBICADO').length;
   const tarjetas = [
-    ['TEL', a.tel !== null ? `${a.tel} %` : '—', 'Meta ≥ 98 %', a.tel === null ? null : a.tel >= 98],
+    ['Localizados', a.tel !== null ? `${a.tel} %` : '—', 'En su ambiente registrado', null],
     ['TAI', a.tai_dias ? `${a.tai_dias} día${a.tai_dias === 1 ? '' : 's'}` : '—', 'Meta ≤ 3 días hábiles', a.tai_dias ? a.tai_dias <= 3 : null],
     ['Esperados', a.equipos_esperados], ['En su ambiente', encontrados], ['Reubicados', reubicados], ['Faltantes', a.faltantes.length],
   ];
@@ -63,7 +63,7 @@ export default function Auditorias() {
     <div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
         <p className="max-w-3xl text-[15px] text-slate-500">
-          Cada auditoría registra cuándo empezó y terminó la verificación física (TAI) y cuántos equipos se encontraron en su ambiente registrado (TEL).
+          Cada auditoría registra cuándo empezó y terminó la verificación física (TAI) y cuántos equipos se encontraron en su ambiente registrado.
           {esDirector && <> <b className="font-semibold text-slate-700">La ejecuta el TICE de cada sede</b> con el pistoleo QR desde su celular o PC; aquí ves los resultados.</>}
         </p>
         {!esDirector && <button className="btn-primario" onClick={() => navegar('/pistoleo?modo=auditoria')}><ScanLine size={18} />Auditar con pistoleo</button>}
@@ -83,7 +83,7 @@ export default function Auditorias() {
               <div className="mt-5 flex items-center gap-6">
                 <Anillo valor={pct} tamano={104}><span className="text-lg font-bold text-slate-900">{pct}%</span></Anillo>
                 <dl className="flex-1 space-y-2 text-[15px]">
-                  <div className="flex justify-between"><dt className="text-slate-500">TEL</dt><dd className={`font-bold ${colorMeta(a.tel === null ? null : a.tel >= 98)}`}>{a.tel !== null ? `${a.tel} %` : '—'}</dd></div>
+                  <div className="flex justify-between"><dt className="text-slate-500">Localizados</dt><dd className="font-bold text-slate-900">{a.tel !== null ? `${a.tel} %` : '—'}</dd></div>
                   <div className="flex justify-between"><dt className="text-slate-500">TAI</dt><dd className={`font-bold ${colorMeta(a.tai_dias ? a.tai_dias <= 3 : null)}`}>{a.tai_dias ? `${a.tai_dias} día${a.tai_dias === 1 ? '' : 's'}` : '—'}</dd></div>
                   <div className="flex justify-between"><dt className="text-slate-500">Verificados</dt><dd className="font-bold text-slate-900">{a.leidos}/{a.equipos_esperados}</dd></div>
                 </dl>

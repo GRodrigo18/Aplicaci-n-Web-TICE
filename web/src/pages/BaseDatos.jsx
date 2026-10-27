@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Database, FlaskConical, Lock, Play, Table2, Terminal } from 'lucide-react';
-import { api, qs } from '../api.js';
+import { ChevronLeft, ChevronRight, Database, Download, FlaskConical, Lock, Play, Table2, Terminal } from 'lucide-react';
+import { api, descargar, qs } from '../api.js';
 import { useSesion } from '../sesion.jsx';
 import { Aviso, Campo, Modal, Segmentado, Vacio } from '../components/ui.jsx';
 
@@ -125,6 +125,15 @@ export default function BaseDatos() {
   const [pagina, setPagina] = useState(1);
   const [datos, setDatos] = useState(null);
   const [error, setError] = useState('');
+  const [respaldo, setRespaldo] = useState('');
+
+  const descargarRespaldo = async () => {
+    setRespaldo('Generando…');
+    try {
+      await descargar('/basedatos/respaldo', `respaldo_tice_${new Date().toISOString().slice(0, 10)}.sql`);
+      setRespaldo('');
+    } catch (e) { setRespaldo(e.message); }
+  };
 
   useEffect(() => { api.get('/basedatos').then((r) => { setResumen(r); setTabla((t) => t || 'equipos'); }).catch((e) => setError(e.message)); }, []);
   useEffect(() => {
@@ -145,6 +154,10 @@ export default function BaseDatos() {
           <div className="truncate text-sm text-slate-500">{resumen.version.split(',')[0]}</div>
         </div>
         <span className="flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600"><Lock size={13} />Solo lectura · sin contraseñas</span>
+        <button className="btn-secundario" onClick={descargarRespaldo} disabled={respaldo === 'Generando…'} title="Copia completa en un archivo .sql (pg_dump)">
+          <Download size={16} />{respaldo === 'Generando…' ? 'Generando…' : 'Descargar respaldo'}
+        </button>
+        {respaldo && respaldo !== 'Generando…' && <div className="w-full text-sm text-red-600">{respaldo}</div>}
       </section>
       {resumen.datos_demo && (
         <section className="mb-5 flex flex-wrap items-center gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-5">

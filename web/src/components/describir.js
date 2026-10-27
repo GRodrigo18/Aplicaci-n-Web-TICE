@@ -34,7 +34,7 @@ export function describir(r) {
     case 'equipo:REUBICADO_EN_AUDITORIA': return `${d.codigo} reubicado en la auditoría: ${d.cambios?.ubicacion?.antes} → ${d.cambios?.ubicacion?.despues}`;
     case 'auditoria:INICIAR': return `Inicio de la auditoría #${r.entidad_id} (${d.equipos_esperados ?? d.esperados} equipos)`;
     case 'auditoria:LECTURA': return `Auditoría #${r.entidad_id}: lectura de ${d.codigo || ''}`;
-    case 'auditoria:FINALIZAR': return `Auditoría #${r.entidad_id} finalizada: TEL ${d.tel} %, TAI ${d.tai_dias} día(s)`;
+    case 'auditoria:FINALIZAR': return `Auditoría #${r.entidad_id} finalizada: ${d.tel} % localizados, TAI ${d.tai_dias} día(s)`;
     case 'usuario:LOGIN': return 'Inicio de sesión';
     case 'usuario:CREAR': return `Alta del usuario ${d.correo || ''}`;
     case 'sistema:CARGA_DEMO': return 'Carga de los datos de demostración';

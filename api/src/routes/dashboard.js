@@ -7,14 +7,14 @@ const { sedeDeConsulta } = require('../lib/auth');
 const router = express.Router();
 
 const num = (v) => (v === undefined || v === '' ? null : Number(v));
-// Línea base (pre-test) y meta (post-test) de la Tabla 1 del informe.
-// Las líneas base que aún no se midieron quedan en null hasta cargarlas en el .env.
+// Línea base (pre-test) y meta (post-test) de la matriz de KPI vigente (27/10/2026).
+// Las líneas base se pueden reemplazar desde el entorno (LB_TRI, LB_TAI, LB_ICI, LB_PIR, LB_DT).
 const KPI = {
-  MTTR: { nombre: 'Tiempo medio de resolución', unidad: 'min', base: num(process.env.LB_MTTR ?? 240), meta: 45, mejor: 'menor' },
-  TAI: { nombre: 'Tiempo de auditoría del inventario', unidad: 'días hábiles', base: num(process.env.LB_TAI ?? 10), meta: 3, mejor: 'menor' },
-  TEL: { nombre: 'Tasa de equipos localizados', unidad: '%', base: num(process.env.LB_TEL), meta: 98, mejor: 'mayor' },
-  CSLA: { nombre: 'Cumplimiento del SLA', unidad: '%', base: num(process.env.LB_CSLA), meta: 90, mejor: 'mayor' },
-  DT: { nombre: 'Disponibilidad tecnológica', unidad: '%', base: num(process.env.LB_DT), meta: 95, mejor: 'mayor' },
+  TRI: { nombre: 'Tiempo de resolución de incidencias', unidad: 'min', base: num(process.env.LB_TRI) ?? 240, meta: 45, mejor: 'menor' },
+  TAI: { nombre: 'Tiempo de auditoría del inventario', unidad: 'días hábiles', base: num(process.env.LB_TAI) ?? 10, meta: 3, mejor: 'menor' },
+  ICI: { nombre: 'Completitud del inventario', unidad: '%', base: num(process.env.LB_ICI) ?? 88.7, meta: 98, mejor: 'mayor' },
+  PIR: { nombre: 'Incidencias registradas con ticket', unidad: '%', base: num(process.env.LB_PIR) ?? 0, meta: 95, mejor: 'mayor' },
+  DT: { nombre: 'Disponibilidad tecnológica', unidad: '%', base: num(process.env.LB_DT) ?? 97.1, meta: 95, mejor: 'mayor' },
 };
 
 const redondear = (v, d = 1) => (v === null || v === undefined ? null : Math.round(Number(v) * 10 ** d) / 10 ** d);
@@ -32,18 +32,20 @@ router.get('/', h(async (req, res) => {
 
   const inicio = Date.now();
   const [resueltos, equipos, porSede, abiertos, auditorias, porCategoria, porNivel,
-    semanal, porTipo, porEstado, porCerrar, correos, sinVerificar, actividad] = await Promise.all([
-    // MTTR y CSLA sobre las incidencias resueltas del periodo
+    semanal, porTipo, porEstado, porCerrar, correos, sinVerificar, actividad, reportadas] = await Promise.all([
+    // TRI y cumplimiento del SLA sobre las incidencias resueltas del periodo
     query(`SELECT count(*)::int AS n,
                   avg(extract(epoch FROM (i.fecha_resolucion - i.fecha_registro)) / 60) AS mttr,
                   count(*) FILTER (WHERE extract(epoch FROM (i.fecha_resolucion - i.fecha_registro)) / 60 <= p.sla_minutos)::int AS dentro
              FROM incidencias i JOIN prioridades p ON p.codigo = i.prioridad
             WHERE i.fecha_resolucion IS NOT NULL AND ${filtroSede('i')} AND ${periodo}`, p),
-    // DT = equipos operativos ÷ equipos activos (sin los dados de baja)
+    // DT = equipos operativos (por su estado; incluye obsoletos que funcionan) ÷ equipos activos (sin los dados de baja)
+    // ICI = registros completos ÷ registros activos: código con correlativo, tipo, marca, modelo, serie, estado y ubicación
     query(`SELECT count(*) FILTER (WHERE e.estado <> 'BAJA')::int AS activos,
-                  count(*) FILTER (WHERE ee.operativo
-                    AND NOT EXISTS (SELECT 1 FROM incidencia_equipos ie JOIN incidencias i ON i.id = ie.incidencia_id
-                                     WHERE ie.equipo_id = e.id AND i.estado IN ('PENDIENTE','EN_PROCESO')))::int AS operativos
+                  count(*) FILTER (WHERE e.estado <> 'BAJA' AND ee.operativo)::int AS operativos,
+                  count(*) FILTER (WHERE e.estado <> 'BAJA' AND e.codigo ~ '[0-9]'
+                    AND coalesce(trim(e.marca), '') <> '' AND coalesce(trim(e.modelo), '') <> ''
+                    AND coalesce(trim(e.serie), '') <> '' AND coalesce(trim(e.ubicacion), '') <> '')::int AS completos
              FROM equipos e JOIN estados_equipo ee ON ee.codigo = e.estado WHERE ${filtroSede('e')}`, [sede]),
     query(`SELECT s.id, s.nombre, e.estado, ee.nombre AS estado_nombre, count(e.id)::int AS n
              FROM sedes s LEFT JOIN equipos e ON e.sede_id = s.id LEFT JOIN estados_equipo ee ON ee.codigo = e.estado
@@ -67,7 +69,7 @@ router.get('/', h(async (req, res) => {
     query(`SELECT i.nivel_escalamiento AS nivel, count(*)::int AS n FROM incidencias i
             WHERE i.estado IN ('PENDIENTE','EN_PROCESO') AND ${filtroSede('i')}
             GROUP BY i.nivel_escalamiento ORDER BY i.nivel_escalamiento`, [sede]),
-    // MTTR por semana (últimas 10 semanas) para ver su evolución frente a la línea base
+    // TRI por semana (últimas 10 semanas) para ver su evolución frente a la línea base
     query(`SELECT date_trunc('week', i.fecha_resolucion)::date AS semana, count(*)::int AS n,
                   avg(extract(epoch FROM (i.fecha_resolucion - i.fecha_registro)) / 60) AS mttr
              FROM incidencias i
@@ -90,20 +92,27 @@ router.get('/', h(async (req, res) => {
             WHERE l.entidad IN ('incidencia', 'equipo', 'correo', 'auditoria') AND l.accion NOT IN ('LECTURA_QR', 'VERIFICADO', 'REUBICADO_EN_AUDITORIA')
               AND ($1::int IS NULL OR l.sede_id = $1)
             ORDER BY l.secuencia DESC LIMIT 6`, [sede]),
+    // PIR = fallas recibidas por correo en el periodo que quedaron como ticket con número, prioridad, SLA y fecha de
+    // cierre ÷ fallas recibidas por correo (los correos descartados con su motivo no son fallas)
+    query(`SELECT count(*) FILTER (WHERE c.estado <> 'DESCARTADO')::int AS n,
+                  count(*) FILTER (WHERE c.estado = 'CONVERTIDO' AND i.fecha_resolucion IS NOT NULL)::int AS con_ticket
+             FROM correos_entrantes c LEFT JOIN incidencias i ON i.correo_id = c.id
+            WHERE ${filtroSede('c')} AND ($2::date IS NULL OR c.recibido_en >= $2::date)
+              AND ($3::date IS NULL OR c.recibido_en < $3::date + 1)`, p),
   ]);
 
   const r = resueltos.rows[0];
   const eq = equipos.rows[0];
   const aud = auditorias.rows;
-  const esperados = aud.reduce((s, a) => s + a.equipos_esperados, 0);
-  const encontrados = aud.reduce((s, a) => s + a.equipos_encontrados, 0);
+
+  const rep = reportadas.rows[0];
 
   const valores = {
-    MTTR: { valor: r.n ? redondear(r.mttr) : null, n: r.n },
-    CSLA: { valor: r.n ? redondear((r.dentro / r.n) * 100) : null, n: r.n },
-    DT: { valor: eq.activos ? redondear((eq.operativos / eq.activos) * 100) : null, n: eq.activos },
-    TEL: { valor: esperados ? redondear((encontrados / esperados) * 100) : null, n: esperados },
+    TRI: { valor: r.n ? redondear(r.mttr) : null, n: r.n },
     TAI: { valor: aud.length ? Math.max(...aud.map((a) => a.tai_dias)) : null, n: aud.length },
+    ICI: { valor: eq.activos ? redondear((eq.completos / eq.activos) * 100) : null, n: eq.activos, completos: eq.completos },
+    PIR: { valor: rep.n ? redondear((rep.con_ticket / rep.n) * 100) : null, n: rep.n, con_ticket: rep.con_ticket },
+    DT: { valor: eq.activos ? redondear((eq.operativos / eq.activos) * 100) : null, n: eq.activos },
   };
   const indicadores = Object.entries(KPI).map(([sigla, k]) => {
     const v = valores[sigla].valor;
@@ -113,12 +122,14 @@ router.get('/', h(async (req, res) => {
 
   res.json({
     indicadores,
-    equipos: { activos: eq.activos, operativos: eq.operativos, por_sede: porSede.rows.filter((x) => x.estado) },
+    equipos: { activos: eq.activos, operativos: eq.operativos, completos: eq.completos, por_sede: porSede.rows.filter((x) => x.estado) },
     tickets_abiertos: abiertos.rows,
     tickets_por_categoria: porCategoria.rows,
     tickets_por_nivel: porNivel.rows,
     auditorias: aud,
-    mttr_semanal: semanal.rows.map((x) => ({ semana: x.semana, n: x.n, mttr: redondear(x.mttr) })),
+    // cumplimiento del SLA: dato de apoyo para la mesa de ayuda (ya no es KPI del proyecto)
+    sla: { resueltos: r.n, dentro: r.dentro, porcentaje: r.n ? redondear((r.dentro / r.n) * 100) : null },
+    tri_semanal: semanal.rows.map((x) => ({ semana: x.semana, n: x.n, tri: redondear(x.mttr) })),
     equipos_por_tipo: porTipo.rows,
     equipos_por_estado: porEstado.rows,
     resueltos_por_cerrar: porCerrar.rows[0].n,

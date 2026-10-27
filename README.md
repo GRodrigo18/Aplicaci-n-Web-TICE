@@ -77,7 +77,7 @@ docker compose start api
 # PostgreSQL local con una base "tice" y otra "tice_test"
 cd api && npm install && npm run seed && npm run dev        # API en :3000
 cd web && npm install && npm run dev                        # web en :5173 (redirige /api a :3000)
-cd api && npm test                                          # 22 pruebas CP-01 a CP-22 contra tice_test
+cd api && npm test                                          # 29 pruebas CP-01 a CP-29 contra tice_test
 ```
 
 Variables: `DATABASE_URL` (por defecto `postgres://tice:tice@localhost:5432/tice`) y `TEST_DATABASE_URL`
@@ -97,7 +97,9 @@ Variables: `DATABASE_URL` (por defecto `postgres://tice:tice@localhost:5432/tice
 | Tickets con prioridad ITIL 4 y SLA, Kanban, solución | RF-03, RF-04 | UC-07, UC-08, UC-09 | CP-07 a CP-11 |
 | Escalamiento ITIL 4 (niveles 1 a 3, alerta al 75 % del SLA, escalado automático) | RF-03 | UC-08 | CP-21, CP-22 |
 | Acuse y avisos al solicitante (bandeja de salida) | RF-10 | UC-10 | CP-19 |
-| Dashboard: MTTR, CSLA, DT, TEL, TAI | RF-06, RNF-02 | UC-11 | CP-14 |
+| Dashboard: TRI, TAI, ICI, PIR, DT | RF-06, RNF-02 | UC-11 | CP-14, CP-28 |
+| Importación del inventario desde Excel, correos del dominio, Google, roles | RF-01, RF-02 | UC-01, UC-04 | CP-23 a CP-27 |
+| Respaldo descargable de la base (.sql con pg_dump) | RNF-07 | — | CP-29 |
 
 ### Escalamiento (ITIL 4)
 
@@ -115,14 +117,19 @@ Variables: `DATABASE_URL` (por defecto `postgres://tice:tice@localhost:5432/tice
 
 ### Indicadores
 
-- **MTTR** = promedio de (fecha de resolución − fecha de registro) de los tickets resueltos del periodo, en minutos.
-- **CSLA** = tickets resueltos dentro del SLA de su prioridad ÷ tickets resueltos × 100 (Crítica 20 min, Alta 45, Media 120, Baja 480).
-- **DT** = equipos operativos ÷ equipos activos × 100. Activos = sin los dados de baja; operativos = estado Operativo y sin ticket abierto.
-- **TEL** = equipos leídos en el ambiente que indica el sistema ÷ equipos registrados de la sede al iniciar la auditoría × 100.
-- **TAI** = días hábiles (lunes a viernes) desde el inicio hasta el fin de la auditoría, contando ambos días.
+Los cinco KPI de la matriz vigente (27/10/2026), con su línea base del pre-test y su meta:
 
-Las líneas base que aún no se midieron (TEL, CSLA, DT) se cargan en `.env` (`LB_TEL`, `LB_CSLA`, `LB_DT`) cuando se
-tenga el pre-test; hasta entonces el dashboard muestra "por medir".
+- **TRI** (base 240 min, meta ≤ 45) = promedio de (fecha de resolución − fecha de registro) de los tickets resueltos del periodo, en minutos.
+- **TAI** (base 10 días hábiles, meta ≤ 3) = días hábiles (lunes a viernes) desde el inicio hasta el fin de la auditoría, contando ambos días.
+- **ICI** (base 88,7 %, meta ≥ 98 %) = registros completos ÷ equipos activos × 100. Completo = código con correlativo, tipo,
+  marca, modelo, número de serie, estado y ubicación.
+- **PIR** (base 0 %, meta ≥ 95 %) = fallas recibidas por correo en el periodo que terminaron en un ticket con número,
+  prioridad, SLA y fecha de cierre ÷ fallas recibidas por correo × 100. Los correos descartados con motivo no son fallas.
+- **DT** (base 97,1 %, meta ≥ 95 %) = equipos operativos ÷ equipos activos × 100. Activos = sin los dados de baja;
+  operativos = estado Operativo u Obsoleto (equipos que funcionan).
+
+Las líneas base se pueden cambiar con `LB_TRI`, `LB_TAI`, `LB_ICI`, `LB_PIR` y `LB_DT`. El cumplimiento del SLA y el
+porcentaje de equipos localizados en cada auditoría se siguen mostrando como datos de apoyo.
 
 ## Base de datos
 
@@ -136,6 +143,14 @@ tenga el pre-test; hasta entonces el dashboard muestra "por medir".
 - `logs_auditoria`: un trigger calcula la secuencia y el hash SHA-256 encadenado; otros triggers rechazan UPDATE, DELETE y TRUNCATE.
 - `operaciones_bd`: triggers cuentan cada escritura en `equipos` e `incidencias`; la vista `operaciones_sin_bitacora`
   muestra las transacciones que escribieron sin dejar registro (por ejemplo, un cambio hecho por fuera del sistema).
+
+### Respaldo (RNF-07)
+
+En **Base de datos → Descargar respaldo** el Jefe de TI baja un archivo `.sql` con la estructura, los datos, los
+triggers y las secuencias del esquema `public` (pg_dump). Cada descarga queda en la bitácora (`RESPALDO`). Para
+restaurarlo, se ejecuta el archivo en una base vacía (por ejemplo, en el SQL Editor de un proyecto nuevo de Supabase o
+con `psql "<cadena de conexión>" -f respaldo.sql`). La cadena de la bitácora se conserva igual. Conviene descargarlo al
+final de cada día de trabajo y guardarlo fuera del servidor.
 
 ### Base de datos que no vence (Supabase)
 

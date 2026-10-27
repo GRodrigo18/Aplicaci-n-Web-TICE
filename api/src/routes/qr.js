@@ -88,7 +88,7 @@ router.post('/traslado', soloTice, h(async (req, res) => {
 }));
 
 // ------------------------------------------------------------------
-// Auditoría física del inventario de la sede (TEL y TAI)
+// Auditoría física del inventario de la sede (equipos localizados y TAI)
 // ------------------------------------------------------------------
 async function auditoriaConDetalle(id, usuario) {
   const { rows: [a] } = await query(
@@ -188,7 +188,7 @@ router.post('/auditorias/:id/finalizar', soloTice, h(async (req, res) => {
               count(*) FILTER (WHERE resultado = 'REUBICADO')::int AS reubicados
          FROM auditoria_items WHERE auditoria_id = $1`, [id]);
     const fin = new Date();
-    // TEL = equipos encontrados en su ubicación ÷ equipos registrados en la sede × 100
+    // Localizados = equipos encontrados en su ubicación ÷ equipos registrados en la sede × 100
     const tel = Math.round((r.encontrados / a.equipos_esperados) * 10000) / 100;
     // TAI = días hábiles desde el inicio hasta el fin, contando ambos
     const tai = diasHabiles(a.fecha_inicio, fin);

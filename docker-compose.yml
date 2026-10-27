@@ -33,8 +33,10 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
-      LB_TEL: ${LB_TEL:-}
-      LB_CSLA: ${LB_CSLA:-}
+      LB_TRI: ${LB_TRI:-}
+      LB_TAI: ${LB_TAI:-}
+      LB_ICI: ${LB_ICI:-}
+      LB_PIR: ${LB_PIR:-}
       LB_DT: ${LB_DT:-}
       TZ: America/Lima
 

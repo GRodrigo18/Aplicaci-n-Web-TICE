@@ -163,7 +163,7 @@ export default function PanelOperativo() {
           ) : (
             <div>
               <p className="text-[15px] text-slate-600">
-                {ultima ? <>La última auditoría terminó {hace(ultima.fecha_fin)} con TEL de <b>{ultima.tel ?? '—'} %</b>.</> : 'Todavía no se ha hecho ninguna auditoría en la sede.'}
+                {ultima ? <>La última auditoría terminó {hace(ultima.fecha_fin)} con <b>{ultima.tel ?? '—'} %</b> de equipos localizados.</> : 'Todavía no se ha hecho ninguna auditoría en la sede.'}
                 {' '}{sinVerificar ? `${sinVerificar} equipos nunca se han verificado con QR.` : ''}
               </p>
               <button className="btn-primario mt-4" onClick={() => navegar('/pistoleo?modo=auditoria')}><ClipboardCheck size={17} />Iniciar auditoría</button>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Activity, ArrowRight, ArrowUpRight, Boxes, ChevronRight, ClipboardCheck, Gauge, LifeBuoy, Mail, Plus, RefreshCw, ScanLine,
-  ShieldCheck, Star, Target, Timer, TrendingDown, Zap,
+  ShieldCheck, Star, Timer, TrendingDown, Zap,
 } from 'lucide-react';
 import { api, qs } from '../api.js';
 import { useSesion } from '../sesion.jsx';
@@ -10,7 +10,7 @@ import { Aviso, Avatar, COLOR_PRIORIDAD, NIVELES, hace } from '../components/ui.
 import { describir } from '../components/describir.js';
 import PanelOperativo from './PanelOperativo.jsx';
 
-const ICONOS_KPI = { MTTR: Timer, TAI: ClipboardCheck, TEL: Target, CSLA: ShieldCheck, DT: Activity };
+const ICONOS_KPI = { TRI: Timer, TAI: ClipboardCheck, ICI: Boxes, PIR: ShieldCheck, DT: Activity };
 const fmt = (v, unidad) => {
   if (v === null || v === undefined) return '—';
   if (unidad === '%') return `${v} %`;
@@ -39,8 +39,9 @@ function estadoKpi(k) {
 
 function detalleKpi(k) {
   if (k.valor === null) return 'Sin datos todavía';
-  if (k.sigla === 'MTTR' || k.sigla === 'CSLA') return `${k.n} tickets resueltos en el periodo`;
-  if (k.sigla === 'TEL') return `${k.n} equipos esperados en la última auditoría`;
+  if (k.sigla === 'TRI') return `${k.n} tickets resueltos`;
+  if (k.sigla === 'ICI') return `${k.completos} de ${k.n} completos`;
+  if (k.sigla === 'PIR') return `${k.con_ticket} de ${k.n} fallas con ticket`;
   if (k.sigla === 'TAI') return `Última auditoría · ${k.n} sede(s)`;
   return `${k.n} equipos activos`;
 }
@@ -59,10 +60,10 @@ function TarjetaKpi({ k }) {
       <div className="mt-4 text-[32px] font-extrabold leading-none tracking-tight text-slate-900">{fmt(k.valor, k.unidad)}</div>
       <div className="mt-1.5 text-sm text-slate-500">{k.nombre}</div>
       <div className="mt-4 h-1.5 rounded-full bg-slate-100"><div className={`h-1.5 rounded-full ${color}`} style={{ width: `${avance(k)}%` }} /></div>
-      <div className="mt-2.5 flex items-center justify-between gap-2 text-xs">
-        <span className="truncate text-slate-400">{detalleKpi(k)}</span>
-        <span className="whitespace-nowrap font-semibold text-slate-600">Meta {k.mejor === 'menor' ? '≤' : '≥'} {corto(k.meta, k.unidad)}{k.base !== null ? ` · base ${corto(k.base, k.unidad).replace(' min', '')}` : ''}</span>
+      <div className="mt-2.5 text-xs font-semibold text-slate-600">
+        Meta {k.mejor === 'menor' ? '≤' : '≥'} {corto(k.meta, k.unidad)}{k.base !== null ? ` · base ${corto(k.base, k.unidad).replace(' min', '')}` : ''}
       </div>
+      <div className="mt-1 truncate text-xs text-slate-400" title={detalleKpi(k)}>{detalleKpi(k)}</div>
     </div>
   );
 }
@@ -71,10 +72,10 @@ function TarjetaKpi({ k }) {
 function GraficoMttr({ datos, base, meta }) {
   const W = 760; const H = 300; const izq = 40; const der = 16; const arr = 26; const aba = 30;
   if (!datos.length) return <p className="py-16 text-center text-sm text-slate-400">Todavía no hay tickets resueltos en las últimas semanas.</p>;
-  const max = Math.ceil(Math.max(base || 0, ...datos.map((d) => d.mttr)) / 60) * 60 || 60;
+  const max = Math.ceil(Math.max(base || 0, ...datos.map((d) => d.tri)) / 60) * 60 || 60;
   const x = (i) => izq + (datos.length === 1 ? (W - izq - der) / 2 : (i / (datos.length - 1)) * (W - izq - der));
   const y = (v) => arr + (1 - v / max) * (H - arr - aba);
-  const linea = datos.map((d, i) => `${i ? 'L' : 'M'}${x(i)},${y(d.mttr)}`).join(' ');
+  const linea = datos.map((d, i) => `${i ? 'L' : 'M'}${x(i)},${y(d.tri)}`).join(' ');
   const area = `${linea} L${x(datos.length - 1)},${y(0)} L${x(0)},${y(0)} Z`;
   const marcas = Array.from({ length: 5 }, (_, i) => Math.round((max / 4) * i));
   const ultimo = datos[datos.length - 1];
@@ -100,8 +101,8 @@ function GraficoMttr({ datos, base, meta }) {
       <text x={izq + 6} y={y(meta) - 6} className="fill-emerald-600 text-[11px] font-semibold">Meta ≤ {meta} min</text>
       <path d={area} fill="url(#areaMttr)" />
       <path d={linea} fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={x(datos.length - 1)} cy={y(ultimo.mttr)} r="5" fill="#6366f1" stroke="white" strokeWidth="2" />
-      <text x={x(datos.length - 1) - 8} y={y(ultimo.mttr) - 10} textAnchor="end" className="fill-slate-800 text-[12px] font-bold">{Math.round(ultimo.mttr)} min</text>
+      <circle cx={x(datos.length - 1)} cy={y(ultimo.tri)} r="5" fill="#6366f1" stroke="white" strokeWidth="2" />
+      <text x={x(datos.length - 1) - 8} y={y(ultimo.tri) - 10} textAnchor="end" className="fill-slate-800 text-[12px] font-bold">{Math.round(ultimo.tri)} min</text>
       {datos.map((d, i) => (i % 2 === 0 || i === datos.length - 1) && (
         <text key={d.semana} x={x(i)} y={H - 8} textAnchor="middle" className="fill-slate-400 text-[11px]">{etiquetaFecha(d.semana)}</text>
       ))}
@@ -184,9 +185,8 @@ function PanelGestion() {
   if (error) return <Aviso>{error}</Aviso>;
   if (!d) return <div className="text-slate-500">Cargando indicadores…</div>;
 
-  const mttr = d.indicadores.find((k) => k.sigla === 'MTTR');
-  const csla = d.indicadores.find((k) => k.sigla === 'CSLA');
-  const bajo = mttr.valor !== null && mttr.base ? Math.round(((mttr.base - mttr.valor) / mttr.base) * 100) : null;
+  const tri = d.indicadores.find((k) => k.sigla === 'TRI');
+  const bajo = tri.valor !== null && tri.base ? Math.round(((tri.base - tri.valor) / tri.base) * 100) : null;
   const sedeNombre = esDirector ? (sedes.find((s) => String(s.id) === String(sedeSel))?.nombre || 'Todas las sedes') : usuario.sede_nombre;
   const maxTipo = Math.max(1, ...d.equipos_por_tipo.map((t) => t.n));
   const orden = ['OPERATIVO', 'MANTENIMIENTO', 'AVERIADO', 'OBSOLETO', 'BAJA'];
@@ -202,7 +202,7 @@ function PanelGestion() {
             <h2 className="mt-1 text-3xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-[40px]">
               {bajo !== null && bajo > 0
                 ? <>El tiempo de resolución bajó <span className="bg-gradient-to-r from-marca-500 to-cyan-500 bg-clip-text text-transparent">{bajo} %</span> frente a la línea base</>
-                : mttr.valor !== null ? <>Tiempo medio de resolución: <span className="text-marca-500">{Math.round(mttr.valor)} min</span></> : 'Indicadores del área TICE'}
+                : tri.valor !== null ? <>Tiempo medio de resolución: <span className="text-marca-500">{Math.round(tri.valor)} min</span></> : 'Indicadores del área TICE'}
             </h2>
             <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-500">
               <select className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm" value={dias} onChange={(e) => setDias(Number(e.target.value))} aria-label="Periodo">
@@ -224,8 +224,8 @@ function PanelGestion() {
 
       <div className="grid gap-5 xl:grid-cols-3">
         <section className="tarjeta p-6 xl:col-span-2">
-          <Cabecera icono={TrendingDown} titulo="Evolución del MTTR" sub="Promedio semanal entre el registro y la solución de cada ticket" />
-          <GraficoMttr datos={d.mttr_semanal} base={mttr.base} meta={mttr.meta} />
+          <Cabecera icono={TrendingDown} titulo="Evolución del TRI" sub="Promedio semanal entre el registro y la solución de cada ticket" />
+          <GraficoMttr datos={d.tri_semanal} base={tri.base} meta={tri.meta} />
         </section>
         <section className="tarjeta p-6">
           <Cabecera icono={LifeBuoy} titulo="Mesa de ayuda" sub="Tickets abiertos por prioridad" a="/mesa" />
@@ -253,7 +253,7 @@ function PanelGestion() {
           )}
           <div className="mt-4 flex items-center gap-3 border-t border-slate-100 pt-4 text-sm text-slate-600">
             <Zap size={18} className="text-amber-500" /><span className="flex-1">Resueltos dentro del SLA</span>
-            <span className="font-semibold text-slate-900">{csla.valor === null ? '—' : `${csla.valor} %`}</span>
+            <span className="font-semibold text-slate-900">{d.sla.porcentaje === null ? '—' : `${d.sla.porcentaje} %`}</span>
           </div>
         </section>
       </div>
@@ -323,7 +323,7 @@ function PanelGestion() {
           <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-cyan-400 text-white"><ScanLine size={22} /></span>
           <div className="min-w-0 flex-1">
             <div className="font-bold text-slate-900">{d.sin_verificar} equipo{d.sin_verificar === 1 ? '' : 's'} sin verificar en los últimos 6 meses</div>
-            <div className="text-sm text-slate-500">Una auditoría con pistoleo QR los concilia en minutos por ambiente y actualiza la tasa de equipos localizados (TEL).</div>
+            <div className="text-sm text-slate-500">Una auditoría con pistoleo QR los concilia en minutos por ambiente y calcula el tiempo de auditoría (TAI).</div>
           </div>
           {!esDirector && <button className="btn-primario" onClick={() => navegar('/pistoleo?modo=auditoria')}>Iniciar auditoría <ArrowRight size={16} /></button>}
         </section>

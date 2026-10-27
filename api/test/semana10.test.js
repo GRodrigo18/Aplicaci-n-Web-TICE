@@ -1,5 +1,5 @@
-// Casos de prueba CP-23 a CP-27 (semana 10): importación del inventario desde Excel, correos del dominio
-// institucional, inicio de sesión con Google, consulta SQL de solo lectura y separación de roles.
+// Casos de prueba CP-23 a CP-29 (semana 10): importación del inventario desde Excel, correos del dominio
+// institucional, inicio de sesión con Google, consulta SQL de solo lectura, separación de roles, KPI vigentes y respaldo.
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tice:tice@localhost:5432/tice_test';
 process.env.DOMINIOS_CORREO = 'colegio.edu.pe';
 process.env.GOOGLE_CLIENT_ID = 'cliente-de-prueba.apps.googleusercontent.com';
@@ -174,4 +174,54 @@ test('CP-27 Roles: el Jefe de TI consulta y gestiona; el TICE registra el invent
   assert.equal(creado.body.propiedad, 'ALQUILADO');
   assert.equal((await request(app).put(`/api/equipos/${creado.body.id}`).set(auth('director')).send({ ubicacion: 'X' })).status, 403);
   assert.equal((await request(app).get(`/api/equipos/${creado.body.id}`).set(auth('director'))).status, 200);
+});
+
+test('CP-28 Dashboard con los KPI vigentes: TRI, TAI, ICI, PIR y DT calculados desde los datos', async () => {
+  const r = await request(app).get('/api/dashboard').set(auth('director'));
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.indicadores.map((k) => k.sigla), ['TRI', 'TAI', 'ICI', 'PIR', 'DT']);
+  const k = Object.fromEntries(r.body.indicadores.map((x) => [x.sigla, x]));
+  const pct = (a, b) => Math.round((a / b) * 1000) / 10;
+
+  // ICI y DT sobre los equipos activos (sin los dados de baja)
+  const { rows: eq } = await query(`SELECT e.*, ee.operativo FROM equipos e JOIN estados_equipo ee ON ee.codigo = e.estado
+                                     WHERE e.estado <> 'BAJA'`);
+  const lleno = (v) => v !== null && String(v).trim() !== '';
+  const completos = eq.filter((e) => /\d/.test(e.codigo) && [e.marca, e.modelo, e.serie, e.ubicacion].every(lleno)).length;
+  assert.equal(k.ICI.n, eq.length);
+  assert.equal(k.ICI.completos, completos);
+  assert.equal(k.ICI.valor, pct(completos, eq.length));
+  assert.equal(k.DT.valor, pct(eq.filter((e) => e.operativo).length, eq.length));
+
+  // PIR: fallas recibidas por correo (sin las descartadas) que terminaron en un ticket resuelto
+  const { rows: co } = await query(`SELECT c.estado, i.fecha_resolucion FROM correos_entrantes c
+                                     LEFT JOIN incidencias i ON i.correo_id = c.id`);
+  const fallas = co.filter((c) => c.estado !== 'DESCARTADO');
+  const conTicket = fallas.filter((c) => c.estado === 'CONVERTIDO' && c.fecha_resolucion).length;
+  assert.ok(fallas.length > 0);
+  assert.equal(k.PIR.valor, pct(conTicket, fallas.length));
+
+  // líneas base del pre-test de la matriz de KPI
+  assert.deepEqual([k.TRI.base, k.TAI.base, k.ICI.base, k.PIR.base, k.DT.base], [240, 10, 88.7, 0, 97.1]);
+
+  // un equipo sin serie baja el ICI
+  const tipo = (await query(`SELECT id FROM tipos_equipo WHERE nombre = 'Laptop'`)).rows[0].id;
+  await request(app).post('/api/equipos').set(auth('cen')).send({ codigo: 'XICI-01', tipo_id: tipo, marca: 'HP', modelo: '15DW', ubicacion: 'TICE' });
+  const r2 = await request(app).get('/api/dashboard').set(auth('director'));
+  const ici2 = r2.body.indicadores.find((x) => x.sigla === 'ICI');
+  assert.equal(ici2.n, eq.length + 1);
+  assert.equal(ici2.completos, completos);
+});
+
+test('CP-29 RNF-07 Respaldo: el Jefe de TI descarga la base completa en .sql y la descarga queda en la bitácora', async () => {
+  assert.equal((await request(app).get('/api/basedatos/respaldo').set(auth('cen'))).status, 403);
+  const r = await request(app).get('/api/basedatos/respaldo').set(auth('director')).buffer(true).parse((res, cb) => {
+    let d = ''; res.setEncoding('utf8'); res.on('data', (c) => { d += c; }); res.on('end', () => cb(null, d));
+  });
+  assert.equal(r.status, 200);
+  assert.match(r.headers['content-disposition'], /attachment; filename="respaldo_tice_\d+\.sql"/);
+  for (const t of ['equipos', 'incidencias', 'usuarios', 'logs_auditoria']) assert.match(r.body, new RegExp(`CREATE TABLE public\\.${t} `));
+  assert.match(r.body, /COPY public\.equipos /);
+  const { rows: [l] } = await query(`SELECT * FROM logs_auditoria WHERE accion = 'RESPALDO' ORDER BY secuencia DESC LIMIT 1`);
+  assert.ok(l && l.detalle.bytes > 0);
 });
