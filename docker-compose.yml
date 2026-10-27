@@ -1,0 +1,71 @@
+# Sistema web TICE: PostgreSQL 16 + API REST (Node.js/Express) + aplicación web (React, servida por Nginx)
+# Uso: cp .env.example .env  →  editar JWT_SECRET y POSTGRES_PASSWORD  →  docker compose up -d --build
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-tice}
+      POSTGRES_USER: ${POSTGRES_USER:-tice}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en .env}
+      TZ: America/Lima
+    volumes:
+      - datos_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      retries: 20
+    # sin puertos publicados: la base solo es accesible desde la API
+
+  api:
+    build: ./api
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-tice}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-tice}
+      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET en .env}
+      INBOUND_TOKEN: ${INBOUND_TOKEN:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      LB_TEL: ${LB_TEL:-}
+      LB_CSLA: ${LB_CSLA:-}
+      LB_DT: ${LB_DT:-}
+      TZ: America/Lima
+
+  web:
+    build: ./web
+    restart: unless-stopped
+    depends_on: [api]
+    environment:
+      SERVER_NAME: ${SERVER_NAME:-sistema-tice}
+    ports:
+      - "${PUERTO_HTTP:-8080}:8080"
+      - "${PUERTO_HTTPS:-8443}:8443"
+    volumes:
+      - certificados:/etc/nginx/certs
+
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-tice}
+      POSTGRES_USER: ${POSTGRES_USER:-tice}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: America/Lima
+    entrypoint: ["/bin/sh", "/respaldo.sh"]
+    volumes:
+      - ./backup/respaldo.sh:/respaldo.sh:ro
+      - ./backup/restaurar.sh:/restaurar.sh:ro
+      - ./respaldos:/respaldos
+
+volumes:
+  datos_db:
+  certificados:

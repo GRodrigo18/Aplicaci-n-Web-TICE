@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .btn { @apply inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed; }
+  .btn-primario { @apply btn bg-marca-600 text-white hover:bg-marca-700; }
+  .btn-secundario { @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50; }
+  .btn-peligro { @apply btn bg-red-600 text-white hover:bg-red-700; }
+  .entrada { @apply w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-marca-500 focus:outline-none focus:ring-2 focus:ring-marca-100; }
+  .etiqueta { @apply mb-1 block text-xs font-medium text-slate-600; }
+  .tarjeta { @apply rounded-lg border border-slate-200 bg-white shadow-sm; }
+  .tabla { @apply w-full text-left text-sm; }
+  .tabla th { @apply bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500; }
+  .tabla td { @apply border-t border-slate-100 px-3 py-2 align-top; }
+}
+
+@media print {
+  .no-imprimir { display: none !important; }
+  body { background: white; }
+  @page { size: A4; margin: 10mm; }
+}

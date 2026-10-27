@@ -1,0 +1,8 @@
+{
+  "name": "sistema-tice",
+  "private": true,
+  "scripts": {
+    "test": "npm --prefix api test",
+    "build": "npm --prefix web run build"
+  }
+}
