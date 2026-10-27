@@ -1,0 +1,4 @@
+# Visor web de la base de datos (pgweb), aparte del sistema. Solo lectura y con usuario y contraseña.
+# La conexión sale de PGWEB_DATABASE_URL; el usuario y la contraseña, de PGWEB_AUTH_USER y PGWEB_AUTH_PASS.
+FROM sosedoff/pgweb:0.16.2
+ENTRYPOINT ["/usr/bin/pgweb", "--bind=0.0.0.0", "--listen=8081", "--readonly", "--lock-session", "--ssl=disable", "--open-retry=10"]

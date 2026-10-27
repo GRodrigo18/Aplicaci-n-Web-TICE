@@ -136,3 +136,10 @@ tenga el pre-test; hasta entonces el dashboard muestra "por medir".
 - `logs_auditoria`: un trigger calcula la secuencia y el hash SHA-256 encadenado; otros triggers rechazan UPDATE, DELETE y TRUNCATE.
 - `operaciones_bd`: triggers cuentan cada escritura en `equipos` e `incidencias`; la vista `operaciones_sin_bitacora`
   muestra las transacciones que escribieron sin dejar registro (por ejemplo, un cambio hecho por fuera del sistema).
+
+### Visor de la base de datos aparte (pgweb)
+
+`render.yaml` crea el servicio `visor-bd-tice` con [pgweb](https://github.com/sosedoff/pgweb) (`Dockerfile.pgweb`):
+una página aparte del sistema para ver las tablas, sus filas y su estructura y hacer consultas SQL. Está en modo
+solo lectura y pide usuario (`admin`) y contraseña (variable `PGWEB_AUTH_PASS`, que Render genera; se ve en
+*visor-bd-tice → Environment*).
