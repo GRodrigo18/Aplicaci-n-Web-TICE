@@ -1,9 +1,10 @@
 // RF-05: un registro por cada operación, dentro de la misma transacción que la operación.
 // El hash y la secuencia los calcula el trigger de la base de datos.
-async function registrar(client, usuario, { entidad, entidadId = null, accion, detalle = {}, sedeId }) {
+// fecha solo la usan los datos de demostración para fechar su historial; el sistema siempre usa now()
+async function registrar(client, usuario, { entidad, entidadId = null, accion, detalle = {}, sedeId, fecha = null }) {
   await client.query(
-    `INSERT INTO logs_auditoria (usuario_id, usuario_correo, sede_id, entidad, entidad_id, accion, detalle)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    `INSERT INTO logs_auditoria (usuario_id, usuario_correo, sede_id, entidad, entidad_id, accion, detalle, fecha)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, coalesce($8::timestamptz, now()))`,
     [
       usuario?.id ?? null,
       usuario?.correo ?? null,
@@ -12,6 +13,7 @@ async function registrar(client, usuario, { entidad, entidadId = null, accion, d
       entidadId,
       accion,
       JSON.stringify(detalle),
+      fecha,
     ],
   );
 }

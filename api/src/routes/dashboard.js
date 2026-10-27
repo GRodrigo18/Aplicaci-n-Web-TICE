@@ -30,7 +30,9 @@ router.get('/', h(async (req, res) => {
   const periodo = `($2::date IS NULL OR i.fecha_resolucion >= $2::date)
                AND ($3::date IS NULL OR i.fecha_resolucion < $3::date + 1)`;
 
-  const [resueltos, equipos, porSede, abiertos, auditorias, porCategoria, porNivel] = await Promise.all([
+  const inicio = Date.now();
+  const [resueltos, equipos, porSede, abiertos, auditorias, porCategoria, porNivel,
+    semanal, porTipo, porEstado, porCerrar, correos, sinVerificar, actividad] = await Promise.all([
     // MTTR y CSLA sobre las incidencias resueltas del periodo
     query(`SELECT count(*)::int AS n,
                   avg(extract(epoch FROM (i.fecha_resolucion - i.fecha_registro)) / 60) AS mttr,
@@ -65,6 +67,29 @@ router.get('/', h(async (req, res) => {
     query(`SELECT i.nivel_escalamiento AS nivel, count(*)::int AS n FROM incidencias i
             WHERE i.estado IN ('PENDIENTE','EN_PROCESO') AND ${filtroSede('i')}
             GROUP BY i.nivel_escalamiento ORDER BY i.nivel_escalamiento`, [sede]),
+    // MTTR por semana (últimas 10 semanas) para ver su evolución frente a la línea base
+    query(`SELECT date_trunc('week', i.fecha_resolucion)::date AS semana, count(*)::int AS n,
+                  avg(extract(epoch FROM (i.fecha_resolucion - i.fecha_registro)) / 60) AS mttr
+             FROM incidencias i
+            WHERE i.fecha_resolucion >= date_trunc('week', now()) - interval '9 weeks' AND ${filtroSede('i')}
+            GROUP BY 1 ORDER BY 1`, [sede]),
+    query(`SELECT t.nombre AS tipo, count(*)::int AS n FROM equipos e JOIN tipos_equipo t ON t.id = e.tipo_id
+            WHERE e.estado <> 'BAJA' AND ${filtroSede('e')} GROUP BY t.nombre ORDER BY n DESC, t.nombre`, [sede]),
+    query(`SELECT e.estado, ee.nombre, count(*)::int AS n FROM equipos e JOIN estados_equipo ee ON ee.codigo = e.estado
+            WHERE ${filtroSede('e')} GROUP BY e.estado, ee.nombre`, [sede]),
+    query(`SELECT count(*)::int AS n FROM incidencias i WHERE i.estado = 'RESUELTO' AND ${filtroSede('i')}`, [sede]),
+    query(`SELECT count(*)::int AS n, min(c.recibido_en) AS mas_antiguo FROM correos_entrantes c
+            WHERE c.estado = 'POR_ATENDER' AND ${filtroSede('c')}`, [sede]),
+    // equipos activos que no se verificaron con QR en los últimos 6 meses
+    query(`SELECT count(*)::int AS n FROM equipos e
+            WHERE e.estado <> 'BAJA' AND (e.ultima_verificacion IS NULL OR e.ultima_verificacion < now() - interval '6 months')
+              AND ${filtroSede('e')}`, [sede]),
+    // actividad reciente desde la bitácora (sin el detalle completo)
+    query(`SELECT l.secuencia, l.fecha, l.entidad, l.entidad_id, l.accion, l.detalle, u.nombre AS usuario_nombre
+             FROM logs_auditoria l LEFT JOIN usuarios u ON u.id = l.usuario_id
+            WHERE l.entidad IN ('incidencia', 'equipo', 'correo', 'auditoria') AND l.accion NOT IN ('LECTURA_QR', 'VERIFICADO', 'REUBICADO_EN_AUDITORIA')
+              AND ($1::int IS NULL OR l.sede_id = $1)
+            ORDER BY l.secuencia DESC LIMIT 6`, [sede]),
   ]);
 
   const r = resueltos.rows[0];
@@ -93,7 +118,15 @@ router.get('/', h(async (req, res) => {
     tickets_por_categoria: porCategoria.rows,
     tickets_por_nivel: porNivel.rows,
     auditorias: aud,
+    mttr_semanal: semanal.rows.map((x) => ({ semana: x.semana, n: x.n, mttr: redondear(x.mttr) })),
+    equipos_por_tipo: porTipo.rows,
+    equipos_por_estado: porEstado.rows,
+    resueltos_por_cerrar: porCerrar.rows[0].n,
+    correos_por_atender: correos.rows[0],
+    sin_verificar: sinVerificar.rows[0].n,
+    actividad: actividad.rows,
     periodo: { desde, hasta },
+    milisegundos: Date.now() - inicio,
   });
 }));
 

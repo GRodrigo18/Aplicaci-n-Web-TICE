@@ -21,7 +21,8 @@ router.get('/', h(async (req, res) => {
   const pagina = Math.max(entero(q.pagina, 'pagina') || 1, 1);
   const where = cond.length ? `WHERE ${cond.join(' AND ')}` : '';
   const [{ rows }, { rows: [{ total }] }] = await Promise.all([
-    query(`SELECT l.*, s.nombre AS sede_nombre FROM logs_auditoria l LEFT JOIN sedes s ON s.id = l.sede_id
+    query(`SELECT l.*, s.nombre AS sede_nombre, u.nombre AS usuario_nombre FROM logs_auditoria l
+             LEFT JOIN sedes s ON s.id = l.sede_id LEFT JOIN usuarios u ON u.id = l.usuario_id
            ${where} ORDER BY l.secuencia DESC LIMIT ${limite} OFFSET ${(pagina - 1) * limite}`, params),
     query(`SELECT count(*)::int AS total FROM logs_auditoria l ${where}`, params),
   ]);

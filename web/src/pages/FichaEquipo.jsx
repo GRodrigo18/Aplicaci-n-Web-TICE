@@ -1,20 +1,31 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Ban, Calendar, Clock, LifeBuoy, MapPin, Pencil, Printer, Tag, User } from 'lucide-react';
 import { api } from '../api.js';
-import { Aviso, Insignia, fecha, fechaHora } from '../components/ui.jsx';
-import { EtiquetaEquipo, ImagenQr } from '../components/Etiqueta.jsx';
-import { FormBaja, FormEquipo } from './Inventario.jsx';
+import { Aviso, IconoTipo, Insignia, Panel, Segmentado, fecha, fechaHora, insigniaEquipo } from '../components/ui.jsx';
+import { ImagenQr } from '../components/Etiqueta.jsx';
+import { FormBaja, FormEquipo, imprimirEtiquetas } from './Inventario.jsx';
+import { NuevoTicket } from './MesaAyuda.jsx';
+
+const ACCIONES = {
+  CREAR: (d) => (d.origen ? 'Migrado desde hoja de cálculo' : 'Registrado en el inventario'),
+  MODIFICAR: (d) => `Modificado: ${Object.keys(d.cambios || {}).join(', ')}`,
+  BAJA: () => 'Dado de baja',
+  TRASLADO: () => 'Trasladado',
+  LECTURA_QR: () => 'Identificado con QR',
+  VERIFICADO: () => 'Verificado con QR',
+  REUBICADO_EN_AUDITORIA: () => 'Reubicado en una auditoría',
+};
+const COLOR = { VERIFICADO: 'bg-emerald-500', LECTURA_QR: 'bg-emerald-500', BAJA: 'bg-red-500', REUBICADO_EN_AUDITORIA: 'bg-amber-500', TRASLADO: 'bg-amber-500' };
 
 export function Historial({ registros }) {
-  if (!registros?.length) return <p className="text-sm text-slate-500">Sin registros.</p>;
+  if (!registros?.length) return <p className="text-sm text-slate-400">Sin registros.</p>;
   return (
-    <ol className="space-y-2">
+    <ol className="relative space-y-5 before:absolute before:bottom-2 before:left-[5px] before:top-2 before:w-px before:bg-slate-200">
       {registros.map((h, i) => (
-        <li key={i} className="border-l-2 border-slate-200 pl-3 text-sm">
-          <div className="flex flex-wrap items-baseline gap-2">
-            <span className="font-medium text-slate-700">{h.accion.replace(/_/g, ' ').toLowerCase()}</span>
-            <span className="text-xs text-slate-400">{fechaHora(h.fecha)} · {h.usuario_correo || 'sistema'}</span>
-          </div>
+        <li key={i} className="relative pl-7">
+          <span className={`absolute left-0 top-1.5 h-[11px] w-[11px] rounded-full ring-4 ring-white ${COLOR[h.accion] || 'bg-marca-500'}`} />
+          <div className="font-semibold text-slate-800">{(ACCIONES[h.accion] || (() => h.accion.replace(/_/g, ' ').toLowerCase()))(h.detalle || {})}</div>
+          <div className="text-sm text-slate-500">{h.usuario_nombre || h.usuario_correo || 'Sistema'} · {fechaHora(h.fecha)}</div>
           {h.detalle?.cambios && Object.entries(h.detalle.cambios).map(([k, v]) => (
             <div key={k} className="text-xs text-slate-500">{k}: <s>{String(v.antes ?? '—')}</s> → {String(v.despues ?? '—')}</div>
           ))}
@@ -25,64 +36,81 @@ export function Historial({ registros }) {
   );
 }
 
-export default function FichaEquipo() {
-  const { id } = useParams();
+// Contenido de la ficha: se usa en el panel del inventario y en el pistoleo QR
+export function FichaContenido({ e, onEditar, onBaja, onReportar }) {
+  const [pestana, setPestana] = useState('historial');
+  const historial = [...(e.historial || [])].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+  const datos = [
+    [Tag, 'Serie', e.serie], [MapPin, 'Ubicación', e.ubicacion], [User, 'Responsable', e.responsable],
+    [Calendar, 'Adquisición', fecha(e.fecha_adquisicion)], [Clock, 'Última verificación QR', fechaHora(e.ultima_verificacion)],
+  ];
+  return (
+    <div>
+      <div className="relative overflow-hidden border-b border-slate-100 p-7">
+        <div className="pointer-events-none absolute -right-10 -top-20 h-56 w-96 rounded-full bg-gradient-to-r from-marca-100/60 to-pink-100/50 blur-3xl" />
+        <div className="relative flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-sm text-slate-600"><IconoTipo tipo={e.tipo} />{e.tipo} · {e.sede_nombre}</div>
+            <div className="mt-2 font-mono text-3xl font-semibold tracking-tight text-slate-900">{e.codigo}</div>
+            <div className="mt-1 text-lg text-slate-500">{e.marca} {e.modelo}</div>
+            <div className="mt-3">{insigniaEquipo(e)}</div>
+          </div>
+          <div className="mr-8 text-center">
+            <div className="rounded-2xl bg-white p-2 shadow-suave"><ImagenQr token={e.qr_token} tamano={120} /></div>
+            <div className="mt-2 font-mono text-[11px] text-slate-400">{e.qr_token.slice(0, 12)}</div>
+          </div>
+        </div>
+      </div>
+      {e.estado === 'BAJA' && <div className="px-7 pt-5"><Aviso tipo="info">Dado de baja el {fechaHora(e.fecha_baja)}. Motivo: {e.motivo_baja}</Aviso></div>}
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-5 border-b border-slate-100 p-7">
+        {datos.map(([Icono, k, v]) => (
+          <div key={k}><dt className="flex items-center gap-1.5 text-sm text-slate-500"><Icono size={14} />{k}</dt><dd className="mt-0.5 text-[17px] font-medium text-slate-900">{v || '—'}</dd></div>
+        ))}
+      </dl>
+      <div className="p-7">
+        <div className="flex flex-wrap items-center gap-2">
+          {e.estado !== 'BAJA' && onReportar && <button className="btn-primario" onClick={onReportar}><LifeBuoy size={17} />Reportar incidencia</button>}
+          {e.estado !== 'BAJA' && onEditar && <button className="btn-secundario" onClick={onEditar}><Pencil size={16} />Editar</button>}
+          <button className="btn-secundario" onClick={() => imprimirEtiquetas([e])}><Printer size={16} />Imprimir etiqueta</button>
+          {e.estado !== 'BAJA' && onBaja && <button className="btn-texto-peligro" onClick={onBaja}><Ban size={16} />Dar de baja</button>}
+        </div>
+        {e.observaciones && <p className="mt-4 text-sm text-slate-600">{e.observaciones}</p>}
+        <Segmentado className="mt-6" valor={pestana} onChange={setPestana}
+          opciones={[['historial', `Historial (${historial.length})`], ['tickets', `Tickets (${e.tickets?.length || 0})`]]} />
+        <div className="mt-5">
+          {pestana === 'historial' ? <Historial registros={historial} /> : (
+            <ul className="space-y-2">
+              {(e.tickets || []).map((t) => (
+                <li key={t.id} className="flex items-center gap-3 rounded-xl border border-slate-100 p-3">
+                  <span className="font-mono text-xs text-slate-500">{t.numero}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm text-slate-800">{t.asunto}</span>
+                  <Insignia valor={t.estado} texto={{ PENDIENTE: 'Pendiente', EN_PROCESO: 'En proceso', RESUELTO: 'Resuelto', CERRADO: 'Cerrado' }[t.estado]} />
+                </li>
+              ))}
+              {!e.tickets?.length && <p className="text-sm text-slate-400">Sin incidencias registradas.</p>}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function FichaEquipo({ id, onCerrar, onCambio }) {
   const [e, setE] = useState(null);
   const [error, setError] = useState('');
   const [modal, setModal] = useState(null);
   const cargar = useCallback(() => api.get(`/equipos/${id}`).then(setE).catch((x) => setError(x.message)), [id]);
-  useEffect(() => { cargar(); }, [cargar]);
-  if (error) return <Aviso>{error}</Aviso>;
-  if (!e) return <div className="text-slate-500">Cargando…</div>;
-
-  const datos = [
-    ['Tipo', e.tipo], ['Marca', e.marca], ['Modelo', e.modelo], ['Serie', e.serie], ['Sede', e.sede_nombre],
-    ['Ubicación', e.ubicacion], ['Adquisición', fecha(e.fecha_adquisicion)], ['Última verificación', fechaHora(e.ultima_verificacion)],
-  ];
+  useEffect(() => { setE(null); cargar(); }, [cargar]);
+  const hecho = () => { setModal(null); cargar(); onCambio?.(); };
   return (
-    <div>
-      <Link to="/inventario" className="text-sm text-marca-600 hover:underline">← Inventario</Link>
-      <div className="mt-2 flex flex-wrap items-center gap-3">
-        <h1 className="font-mono text-2xl font-semibold text-slate-800">{e.codigo}</h1>
-        <Insignia valor={e.estado} texto={e.estado_nombre} />
-        {e.estado !== 'BAJA' && (
-          <div className="ml-auto flex gap-2">
-            <button className="btn-secundario" onClick={() => setModal('editar')}>Editar</button>
-            <button className="btn-secundario text-red-600" onClick={() => setModal('baja')}>Dar de baja</button>
-          </div>
-        )}
-      </div>
-      {e.estado === 'BAJA' && <div className="mt-3"><Aviso tipo="info">Dado de baja el {fechaHora(e.fecha_baja)}. Motivo: {e.motivo_baja}</Aviso></div>}
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
-        <div className="tarjeta p-4 lg:col-span-2">
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-4">
-            {datos.map(([k, v]) => <div key={k}><dt className="text-xs text-slate-500">{k}</dt><dd className="font-medium text-slate-800">{v || '—'}</dd></div>)}
-          </dl>
-          {e.observaciones && <p className="mt-3 text-sm text-slate-600">{e.observaciones}</p>}
-          <h2 className="mb-2 mt-6 font-semibold text-slate-700">Tickets del equipo</h2>
-          {e.tickets.length ? (
-            <table className="tabla">
-              <thead><tr><th>Ticket</th><th>Asunto</th><th>Prioridad</th><th>Estado</th><th>Registro</th></tr></thead>
-              <tbody>{e.tickets.map((t) => (
-                <tr key={t.id}><td className="font-mono">{t.numero}</td><td>{t.asunto}</td><td><Insignia valor={t.prioridad} /></td><td><Insignia valor={t.estado} /></td><td>{fechaHora(t.fecha_registro)}</td></tr>
-              ))}</tbody>
-            </table>
-          ) : <p className="text-sm text-slate-500">Sin incidencias registradas.</p>}
-          <h2 className="mb-2 mt-6 font-semibold text-slate-700">Historial (bitácora)</h2>
-          <Historial registros={e.historial} />
-        </div>
-        <div className="tarjeta flex flex-col items-center gap-3 p-4">
-          <ImagenQr token={e.qr_token} tamano={180} />
-          <div className="text-center text-xs text-slate-500">Etiqueta QR única del equipo</div>
-          <div className="w-full"><EtiquetaEquipo equipo={e} /></div>
-          <button className="btn-secundario w-full" onClick={() => {
-            try { sessionStorage.setItem('tice_etiquetas', JSON.stringify([e])); } catch { /* */ }
-            window.open('/etiquetas', '_blank');
-          }}>🏷️ Imprimir etiqueta</button>
-        </div>
-      </div>
-      {modal === 'editar' && <FormEquipo equipo={e} onCerrar={() => setModal(null)} onGuardado={() => { setModal(null); cargar(); }} />}
-      {modal === 'baja' && <FormBaja equipo={e} onCerrar={() => setModal(null)} onGuardado={() => { setModal(null); cargar(); }} />}
-    </div>
+    <Panel onCerrar={onCerrar}>
+      {error && <div className="p-7"><Aviso>{error}</Aviso></div>}
+      {!e && !error && <div className="p-7 text-slate-500">Cargando…</div>}
+      {e && <FichaContenido e={e} onEditar={() => setModal('editar')} onBaja={() => setModal('baja')} onReportar={() => setModal('reportar')} />}
+      {modal === 'editar' && <FormEquipo equipo={e} onCerrar={() => setModal(null)} onGuardado={hecho} />}
+      {modal === 'baja' && <FormBaja equipo={e} onCerrar={() => setModal(null)} onGuardado={hecho} />}
+      {modal === 'reportar' && <NuevoTicket equipoInicial={e} onCerrar={() => setModal(null)} onCreado={hecho} />}
+    </Panel>
   );
 }

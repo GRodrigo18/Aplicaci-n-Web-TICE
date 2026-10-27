@@ -2,17 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  body { @apply bg-fondo font-sans text-slate-800 antialiased; }
+  .dark body { background: #0b1020; color: #e2e8f0; }
+}
+
 @layer components {
-  .btn { @apply inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed; }
-  .btn-primario { @apply btn bg-marca-600 text-white hover:bg-marca-700; }
-  .btn-secundario { @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50; }
+  .btn { @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-primario { @apply btn bg-marca-500 text-white shadow-brillo hover:bg-marca-600; }
+  .btn-secundario { @apply btn border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50; }
   .btn-peligro { @apply btn bg-red-600 text-white hover:bg-red-700; }
-  .entrada { @apply w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-marca-500 focus:outline-none focus:ring-2 focus:ring-marca-100; }
-  .etiqueta { @apply mb-1 block text-xs font-medium text-slate-600; }
-  .tarjeta { @apply rounded-lg border border-slate-200 bg-white shadow-sm; }
+  .btn-texto-peligro { @apply btn px-2 text-red-600 hover:bg-red-50; }
+  .entrada { @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 transition focus:border-marca-400 focus:outline-none focus:ring-4 focus:ring-marca-100; }
+  .etiqueta { @apply mb-1.5 block text-[13px] font-medium text-slate-600; }
+  .tarjeta { @apply rounded-2xl border border-slate-200/80 bg-white shadow-suave; }
+  .chip { @apply inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-medium text-slate-600 transition hover:border-slate-300; }
+  .chip-activo { @apply border-marca-500 bg-marca-500 text-white hover:border-marca-500; }
   .tabla { @apply w-full text-left text-sm; }
-  .tabla th { @apply bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500; }
-  .tabla td { @apply border-t border-slate-100 px-3 py-2 align-top; }
+  .tabla th { @apply px-5 py-3.5 text-[13px] font-medium text-slate-500; }
+  .tabla td { @apply border-t border-slate-100 px-5 py-3.5 align-middle; }
+  .titulo-tarjeta { @apply text-[15px] font-bold text-slate-800; }
+  .sub-tarjeta { @apply text-xs text-slate-500; }
+  .icono-tarjeta { @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-marca-500; }
+}
+
+/* Modo oscuro: las superficies y los textos comunes se reasignan en un solo lugar */
+.dark .bg-white { background-color: #121933; }
+.dark .bg-fondo, .dark .bg-slate-50 { background-color: #0f1530; }
+.dark .bg-slate-100 { background-color: #1a2242; }
+.dark .hover\:bg-slate-50:hover, .dark .hover\:bg-slate-100:hover { background-color: #1a2242; }
+.dark .border-slate-100, .dark .border-slate-200, .dark .border-slate-200\/80, .dark .border-slate-300 { border-color: rgba(255,255,255,.08); }
+.dark .divide-slate-100 > * + * { border-color: rgba(255,255,255,.06); }
+.dark .text-slate-900, .dark .text-slate-800 { color: #f1f5f9; }
+.dark .text-slate-700 { color: #e2e8f0; }
+.dark .text-slate-600 { color: #cbd5e1; }
+.dark .text-slate-500 { color: #94a3b8; }
+.dark .entrada { background-color: #0f1530; color: #f1f5f9; }
+.dark .focus\:ring-marca-100:focus { --tw-ring-color: rgba(99,102,241,.25); }
+.dark .bg-marca-50 { background-color: rgba(99,102,241,.14); }
+.dark .bg-emerald-50 { background-color: rgba(16,185,129,.12); }
+.dark .bg-amber-50 { background-color: rgba(245,158,11,.12); }
+.dark .bg-red-50 { background-color: rgba(239,68,68,.12); }
+.dark .bg-blue-50 { background-color: rgba(59,130,246,.12); }
+.dark .shadow-suave { box-shadow: none; }
+
+/* Fondo del escáner y del panel de inicio de sesión */
+.cuadricula {
+  background-image: linear-gradient(rgba(255,255,255,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.07) 1px, transparent 1px);
+  background-size: 32px 32px;
 }
 
 @media print {

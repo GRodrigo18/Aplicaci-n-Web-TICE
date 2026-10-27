@@ -372,7 +372,9 @@ test('CP-19 UC-07 / UC-10: correo de un docente llega a la bandeja de su sede, s
 
 test('CP-20 UC-07: un correo que no es una falla se descarta con motivo y queda en la bitácora', async () => {
   const { rows: [correo] } = await query(
-    `SELECT id FROM correos_entrantes WHERE sede_id = $1 AND estado = 'POR_ATENDER' AND asunto LIKE 'Reunión%'`, [central.id]);
+    `INSERT INTO correos_entrantes (sede_id, remitente, remitente_nombre, asunto, cuerpo)
+     VALUES ($1, 'administracion@colegio.edu.pe', 'Administración', 'Reunión de coordinación del viernes',
+             'Les recordamos la reunión de coordinación general del viernes a las 3 p. m.') RETURNING id`, [central.id]);
   const sinMotivo = await request(app).post(`/api/correos/${correo.id}/descartar`).set(auth('cen')).send({});
   assert.equal(sinMotivo.status, 400);
   const r = await request(app).post(`/api/correos/${correo.id}/descartar`).set(auth('cen')).send({ motivo: 'No es una incidencia' });

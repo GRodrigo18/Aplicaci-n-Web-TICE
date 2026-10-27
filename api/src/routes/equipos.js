@@ -37,6 +37,7 @@ function filtrosInventario(req) {
   if (q.estado) add('e.estado = ?', String(q.estado).toUpperCase());
   else if (q.incluir_bajas !== 'true') cond.push(`e.estado <> 'BAJA'`);
   if (q.ubicacion) add('e.ubicacion ILIKE ?', `%${q.ubicacion}%`);
+  if (q.sin_verificar === 'true') cond.push('e.ultima_verificacion IS NULL');
   return { where: cond.length ? `WHERE ${cond.join(' AND ')}` : '', params };
 }
 
@@ -80,8 +81,9 @@ async function obtenerEquipo(id, usuario) {
 router.get('/:id', h(async (req, res) => {
   const e = await obtenerEquipo(entero(req.params.id, 'id', { requerido: true }), req.usuario);
   const [historial, tickets] = await Promise.all([
-    query(`SELECT fecha, usuario_correo, accion, detalle FROM logs_auditoria
-            WHERE entidad = 'equipo' AND entidad_id = $1 ORDER BY secuencia DESC LIMIT 100`, [e.id]),
+    query(`SELECT l.fecha, l.usuario_correo, u.nombre AS usuario_nombre, l.accion, l.detalle
+             FROM logs_auditoria l LEFT JOIN usuarios u ON u.id = l.usuario_id
+            WHERE l.entidad = 'equipo' AND l.entidad_id = $1 AND l.accion <> 'LECTURA_QR' ORDER BY l.secuencia DESC LIMIT 100`, [e.id]),
     query(`SELECT i.id, i.numero, i.asunto, i.prioridad, i.estado, i.fecha_registro, i.fecha_resolucion
              FROM incidencias i JOIN incidencia_equipos ie ON ie.incidencia_id = i.id
             WHERE ie.equipo_id = $1 ORDER BY i.fecha_registro DESC`, [e.id]),

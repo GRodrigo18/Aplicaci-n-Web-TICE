@@ -16,12 +16,25 @@ function leerToken(lectura) {
 }
 
 // Busca el equipo de una lectura; rechaza etiquetas ajenas o de otra sede
-async function equipoDeLectura(c, lectura, usuario) {
-  const token = leerToken(lectura);
-  const { rows: [e] } = await c.query(
-    `SELECT e.*, t.nombre AS tipo, ee.nombre AS estado_nombre, s.nombre AS sede_nombre
+const SELECT_LECTURA = `SELECT e.*, t.nombre AS tipo, ee.nombre AS estado_nombre, s.nombre AS sede_nombre
        FROM equipos e JOIN tipos_equipo t ON t.id = e.tipo_id JOIN estados_equipo ee ON ee.codigo = e.estado
-       JOIN sedes s ON s.id = e.sede_id WHERE e.qr_token = $1`, [token]);
+       JOIN sedes s ON s.id = e.sede_id`;
+
+// Si la etiqueta está dañada, el TICE puede escribir el código del equipo (p. ej. SC-PC-0001)
+async function equipoPorCodigo(c, lectura, usuario) {
+  const codigo = String(lectura || '').trim().toUpperCase();
+  if (!/^[A-Z0-9][A-Z0-9-]{2,39}$/.test(codigo)) throw new HttpError(422, 'La etiqueta no pertenece al sistema TICE');
+  const { rows } = await c.query(`${SELECT_LECTURA} WHERE upper(e.codigo) = $1 AND ($2::int IS NULL OR e.sede_id = $2)`,
+    [codigo, esDirector(usuario) ? null : usuario.sede_id]);
+  if (!rows.length) throw new HttpError(422, `No hay un equipo con el código ${codigo} en su sede`);
+  if (rows.length > 1) throw new HttpError(422, `El código ${codigo} existe en varias sedes; lea la etiqueta QR`);
+  return rows[0];
+}
+
+async function equipoDeLectura(c, lectura, usuario) {
+  if (!/[a-f0-9]{24}/i.test(String(lectura || ''))) return equipoPorCodigo(c, lectura, usuario);
+  const token = leerToken(lectura);
+  const { rows: [e] } = await c.query(`${SELECT_LECTURA} WHERE e.qr_token = $1`, [token]);
   if (!e) throw new HttpError(422, 'La etiqueta no pertenece al sistema TICE');
   if (!esDirector(usuario) && e.sede_id !== usuario.sede_id) {
     throw new HttpError(422, `La etiqueta es de otra sede (${e.sede_nombre})`);
@@ -38,11 +51,15 @@ router.post('/identificar', h(async (req, res) => {
     });
     return e;
   });
-  const { rows: tickets } = await query(
-    `SELECT i.id, i.numero, i.asunto, i.prioridad, i.estado, i.fecha_registro FROM incidencias i
-       JOIN incidencia_equipos ie ON ie.incidencia_id = i.id WHERE ie.equipo_id = $1 ORDER BY i.fecha_registro DESC LIMIT 10`,
-    [equipo.id]);
-  res.json({ ...equipo, tickets });
+  const [{ rows: tickets }, { rows: historial }] = await Promise.all([
+    query(`SELECT i.id, i.numero, i.asunto, i.prioridad, i.estado, i.fecha_registro FROM incidencias i
+             JOIN incidencia_equipos ie ON ie.incidencia_id = i.id WHERE ie.equipo_id = $1 ORDER BY i.fecha_registro DESC LIMIT 10`,
+    [equipo.id]),
+    query(`SELECT l.fecha, l.usuario_correo, u.nombre AS usuario_nombre, l.accion, l.detalle
+             FROM logs_auditoria l LEFT JOIN usuarios u ON u.id = l.usuario_id
+            WHERE l.entidad = 'equipo' AND l.entidad_id = $1 AND l.accion <> 'LECTURA_QR' ORDER BY l.secuencia DESC LIMIT 50`, [equipo.id]),
+  ]);
+  res.json({ ...equipo, tickets, historial });
 }));
 
 // Modo Traslado: varios equipos leídos se mueven juntos a un nuevo ambiente

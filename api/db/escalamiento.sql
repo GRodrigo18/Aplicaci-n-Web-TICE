@@ -1,4 +1,4 @@
--- Actualización para bases creadas antes del escalamiento (semana 9). En una base nueva no cambia nada.
+-- Actualizaciones para bases creadas antes de la semana 9 (escalamiento y catálogo de tipos). En una base nueva no cambia nada.
 ALTER TABLE incidencias ADD COLUMN IF NOT EXISTS nivel_escalamiento SMALLINT NOT NULL DEFAULT 1;
 ALTER TABLE incidencias ADD COLUMN IF NOT EXISTS escalado_en TIMESTAMPTZ;
 ALTER TABLE incidencias ADD COLUMN IF NOT EXISTS proveedor_externo VARCHAR(120);
@@ -14,3 +14,13 @@ BEGIN
       CHECK (nivel_escalamiento < 3 OR length(trim(proveedor_externo)) > 0);
   END IF;
 END $$;
+
+-- Tipos de equipo del inventario de la Sede Central (los anteriores se conservan)
+INSERT INTO tipos_equipo (nombre) VALUES
+  ('Access point'), ('Computadora de escritorio'), ('Impresora'), ('Laptop'), ('Monitor'), ('Pizarra digital'),
+  ('Proyector'), ('Switch de red'), ('Tablet'), ('UPS'), ('Televisor'), ('Equipo de sonido'), ('Otro')
+ON CONFLICT (nombre) DO NOTHING;
+
+-- Número de ticket con el año (TCK-2026-00001)
+ALTER TABLE incidencias ALTER COLUMN numero
+  SET DEFAULT 'TCK-' || to_char(now(), 'YYYY') || '-' || lpad(nextval('incidencias_numero_seq')::text, 5, '0');

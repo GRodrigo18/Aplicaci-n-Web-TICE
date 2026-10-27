@@ -3,8 +3,8 @@
 const normalizar = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
 const CATEGORIAS = [
-  ['Proyector y multimedia', ['proyector', 'ecran', 'parlante', 'sonido', 'audio', 'hdmi', 'televisor', 'tv ', 'pizarra']],
-  ['Impresora', ['impresora', 'imprime', 'imprimir', 'toner', 'tinta', 'atasco', 'atora papel', 'fotocop']],
+  ['Proyección y audio', ['proyector', 'ecran', 'parlante', 'sonido', 'audio', 'hdmi', 'televisor', 'tv ', 'pizarra']],
+  ['Impresión', ['impresora', 'imprime', 'imprimir', 'toner', 'tinta', 'atasco', 'atora papel', 'fotocop']],
   ['Red e internet', ['internet', 'wifi', 'wi-fi', 'red ', 'conexion', 'conectar', 'router', 'switch', 'access point', 'sin senal']],
   ['Cuentas y accesos', ['contrasena', 'clave', 'usuario', 'cuenta', 'correo no', 'acceso', 'siagie', 'classroom']],
   ['Software', ['programa', 'office', 'word', 'excel', 'windows', 'actualiza', 'virus', 'instalar', 'licencia', 'aplicacion']],
@@ -22,9 +22,12 @@ function proponerTicket(correo, equiposSede) {
   else if (/(aula|salon|oficina|secretaria|direccion|coordinacion|biblioteca|sala de)/.test(texto)) impacto = 'MEDIO';
 
   // Urgencia: alta si hay una clase o evaluación en curso; media si es antes de la siguiente clase
+  // pista: la frase del correo que llevó a la urgencia sugerida (se muestra al TICE)
   let urgencia = 'BAJA';
-  if (/(urgente|ahora|en este momento|en curso|en plena clase|estoy en clase|ya empez|inmediat)/.test(texto)) urgencia = 'ALTA';
-  else if (/(proxima clase|siguiente clase|hoy|manana|antes de)/.test(texto)) urgencia = 'MEDIA';
+  let pista = null;
+  const alta = texto.match(/(urgente|ahora|en este momento|en curso|en plena clase|estoy en clase|tengo clase|ya empez\w*|inmediat\w*)/);
+  const media = texto.match(/(proxima clase|siguiente clase|hoy|manana|antes de)/);
+  if (alta) { urgencia = 'ALTA'; pista = alta[1]; } else if (media) { urgencia = 'MEDIA'; pista = media[1]; }
 
   // Equipos cuyo código aparece en el correo
   const equipos = equiposSede
@@ -42,6 +45,7 @@ function proponerTicket(correo, equiposSede) {
     categoria,
     impacto,
     urgencia,
+    pista_urgencia: pista,
     equipos,
   };
 }

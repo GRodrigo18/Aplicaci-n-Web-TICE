@@ -26,6 +26,7 @@ function crearApp() {
   app.use('/api/correos', correos);
   app.use('/api/dashboard', require('./routes/dashboard'));
   app.use('/api/bitacora', soloDirector, require('./routes/bitacora'));
+  app.use('/api/basedatos', soloDirector, require('./routes/basedatos'));
 
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));
   if (config.webDist) {

@@ -18,7 +18,7 @@ router.get('/', h(async (_req, res) => {
     prioridades: prioridades.rows,
     estados_incidencia: estadosInc.rows,
     matriz_prioridad: MATRIZ,
-    categorias: ['Hardware', 'Software', 'Red e internet', 'Proyector y multimedia', 'Impresora', 'Cuentas y accesos', 'Otro'],
+    categorias: ['Hardware', 'Software', 'Red e internet', 'Proyección y audio', 'Impresión', 'Cuentas y accesos', 'Otro'],
   });
 }));
 

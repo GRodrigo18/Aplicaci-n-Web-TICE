@@ -19,8 +19,9 @@ const SELECT_TICKET = `
          -- minutos transcurridos hasta la resolución (o hasta ahora si sigue abierto)
          round(extract(epoch FROM (coalesce(i.fecha_resolucion, now()) - i.fecha_registro)) / 60)::int AS minutos,
          (extract(epoch FROM (coalesce(i.fecha_resolucion, now()) - i.fecha_registro)) / 60 > p.sla_minutos) AS fuera_de_sla,
-         coalesce((SELECT json_agg(json_build_object('id', e.id, 'codigo', e.codigo, 'ubicacion', e.ubicacion) ORDER BY e.codigo)
-                     FROM incidencia_equipos ie JOIN equipos e ON e.id = ie.equipo_id WHERE ie.incidencia_id = i.id), '[]') AS equipos
+         coalesce((SELECT json_agg(json_build_object('id', e.id, 'codigo', e.codigo, 'ubicacion', e.ubicacion, 'tipo', te.nombre) ORDER BY e.codigo)
+                     FROM incidencia_equipos ie JOIN equipos e ON e.id = ie.equipo_id JOIN tipos_equipo te ON te.id = e.tipo_id
+                    WHERE ie.incidencia_id = i.id), '[]') AS equipos
     FROM incidencias i
     JOIN prioridades p ON p.codigo = i.prioridad
     JOIN estados_incidencia ei ON ei.codigo = i.estado
@@ -45,7 +46,12 @@ router.get('/', h(async (req, res) => {
   if (req.query.estado) { params.push(String(req.query.estado).toUpperCase()); cond.push(`i.estado = $${params.length}`); }
   if (req.query.q) {
     params.push(`%${req.query.q}%`);
-    cond.push(`(i.numero ILIKE $${params.length} OR i.asunto ILIKE $${params.length} OR i.solicitante_correo ILIKE $${params.length})`);
+    const p = `$${params.length}`;
+    // número, asunto, descripción, solicitante, técnico asignado o código del equipo
+    cond.push(`(i.numero ILIKE ${p} OR i.asunto ILIKE ${p} OR i.descripcion ILIKE ${p} OR i.solicitante_correo ILIKE ${p}
+               OR i.solicitante_nombre ILIKE ${p} OR u.nombre ILIKE ${p}
+               OR EXISTS (SELECT 1 FROM incidencia_equipos ie JOIN equipos e ON e.id = ie.equipo_id
+                           WHERE ie.incidencia_id = i.id AND e.codigo ILIKE ${p}))`);
   }
   const where = cond.length ? `WHERE ${cond.join(' AND ')}` : '';
   const { rows } = await query(`${SELECT_TICKET} ${where} ORDER BY p.orden, i.fecha_registro LIMIT 500`, params);
@@ -57,8 +63,9 @@ router.get('/:id', h(async (req, res) => {
   if (!t) throw noEncontrado('Ticket');
   verificarSede(req.usuario, t.sede_id);
   const [historial, avisos] = await Promise.all([
-    query(`SELECT fecha, usuario_correo, accion, detalle FROM logs_auditoria
-            WHERE entidad = 'incidencia' AND entidad_id = $1 ORDER BY secuencia`, [t.id]),
+    query(`SELECT l.fecha, l.usuario_correo, u.nombre AS usuario_nombre, l.accion, l.detalle
+             FROM logs_auditoria l LEFT JOIN usuarios u ON u.id = l.usuario_id
+            WHERE l.entidad = 'incidencia' AND l.entidad_id = $1 ORDER BY l.secuencia`, [t.id]),
     query('SELECT id, destinatario, asunto, estado, creado_en, enviado_en FROM notificaciones WHERE incidencia_id = $1 ORDER BY id', [t.id]),
   ]);
   res.json({ ...t, historial: historial.rows, notificaciones: avisos.rows });

@@ -122,7 +122,7 @@ CREATE SEQUENCE incidencias_numero_seq START 1;
 CREATE TABLE incidencias (
   id                  SERIAL PRIMARY KEY,
   numero              VARCHAR(20)  NOT NULL UNIQUE
-                      DEFAULT 'TCK-' || lpad(nextval('incidencias_numero_seq')::text, 5, '0'),
+                      DEFAULT 'TCK-' || to_char(now(), 'YYYY') || '-' || lpad(nextval('incidencias_numero_seq')::text, 5, '0'),
   sede_id             INTEGER      NOT NULL REFERENCES sedes(id),
   correo_id           INTEGER      UNIQUE REFERENCES correos_entrantes(id),
   solicitante_correo  VARCHAR(150) NOT NULL,
@@ -318,5 +318,5 @@ INSERT INTO estados_incidencia (codigo, nombre, orden) VALUES
   ('CERRADO', 'Cerrado', 4);
 
 INSERT INTO tipos_equipo (nombre) VALUES
-  ('PC de escritorio'), ('PC All in One'), ('Laptop'), ('Proyector'), ('Impresora'),
-  ('Televisor'), ('Pizarra interactiva'), ('Switch'), ('Access point'), ('Equipo de sonido'), ('Otro');
+  ('Access point'), ('Computadora de escritorio'), ('Impresora'), ('Laptop'), ('Monitor'), ('Pizarra digital'),
+  ('Proyector'), ('Switch de red'), ('Tablet'), ('UPS'), ('Televisor'), ('Equipo de sonido'), ('Otro');
