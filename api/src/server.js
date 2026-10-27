@@ -3,9 +3,11 @@ const { crearApp } = require('./app');
 const { migrar } = require('./scripts/migrate');
 const notificaciones = require('./lib/notificaciones');
 const escalamiento = require('./lib/escalamiento');
+const { seed } = require('./scripts/seed');
 
 async function main() {
   await migrar();
+  if (config.datosDemo && (await seed({ silencioso: true }))) console.log('Datos de demostración cargados');
   notificaciones.iniciarProceso();
   escalamiento.iniciarRevision(config.escalamientoIntervaloMs);
   crearApp().listen(config.port, () => {

@@ -27,6 +27,15 @@ docker compose exec api node src/scripts/crear-director.js "Nombre del Director"
   Crea 5 sedes, un TICE por sede, 92 equipos, 6 tickets y 3 correos. Contraseña de todas las cuentas: `Tice2026!`
   (Director: `director.ti@colegio.edu.pe`; TICE Sede Central: `tice.cen.usuario@colegio.edu.pe`).
 
+### En la nube (Render, plan gratuito)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/GRodrigo18/Aplicaci-n-Web-TICE)
+
+`render.yaml` crea una base PostgreSQL 16 y un servicio Docker (`Dockerfile.render`) en el que la API sirve también
+la aplicación web, con `JWT_SECRET` generado y los datos de demostración (`DATOS_DEMO=true`, solo si la base está vacía).
+En el plan gratuito el servicio se duerme tras 15 minutos sin uso (la primera visita tarda ~1 minuto) y la base
+gratuita vence a los 30 días.
+
 ### Respaldo y restauración (RNF-07)
 
 El servicio `backup` ejecuta `pg_dump` todos los días a las 02:00, verifica que la copia sea legible con `pg_restore --list`

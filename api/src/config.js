@@ -18,6 +18,9 @@ const config = {
   },
   notificacionesIntervaloMs: Number(env.NOTIFICACIONES_INTERVALO_MS || 15000),
   escalamientoIntervaloMs: Number(env.ESCALAMIENTO_INTERVALO_MS || 60000),
+  // Despliegue en un solo servicio (Render): la API sirve también la aplicación web compilada
+  webDist: env.WEB_DIST || '',
+  datosDemo: env.DATOS_DEMO === 'true',
 };
 
 if (!config.jwtSecret) {

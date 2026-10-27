@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 const helmet = require('helmet');
 const config = require('./config');
@@ -8,7 +9,8 @@ const correos = require('./routes/correos');
 function crearApp() {
   const app = express();
   app.set('trust proxy', 1);
-  app.use(helmet());
+  // con la web servida aquí, la CSP por defecto de helmet bloquearía la cámara y los estilos de la SPA (Nginx no la usa)
+  app.use(helmet(config.webDist ? { contentSecurityPolicy: false } : {}));
   app.use(express.json({ limit: '1mb' }));
 
   app.get('/api/salud', (_req, res) => res.json({ ok: true }));
@@ -26,6 +28,10 @@ function crearApp() {
   app.use('/api/bitacora', soloDirector, require('./routes/bitacora'));
 
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));
+  if (config.webDist) {
+    app.use(express.static(config.webDist, { index: false, maxAge: '30d' }));
+    app.get('*', (_req, res) => res.sendFile(path.join(config.webDist, 'index.html')));
+  }
   app.use(manejadorErrores);
   return app;
 }

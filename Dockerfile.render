@@ -1,0 +1,20 @@
+# Imagen única para Render: compila la web y la sirve desde la API (sin Nginx)
+FROM node:22-alpine AS web
+WORKDIR /web
+COPY web/package.json web/package-lock.json ./
+RUN npm ci
+COPY web ./
+RUN npm run build
+
+FROM node:22-alpine
+WORKDIR /app
+ENV NODE_ENV=production WEB_DIST=/app/public TZ=America/Lima
+RUN apk add --no-cache tzdata
+COPY api/package.json api/package-lock.json ./
+RUN npm ci --omit=dev
+COPY api/db ./db
+COPY api/src ./src
+COPY --from=web /web/dist ./public
+USER node
+EXPOSE 3000
+CMD ["node", "src/server.js"]
