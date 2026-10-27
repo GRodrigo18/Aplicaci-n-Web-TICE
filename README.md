@@ -40,6 +40,14 @@ gratuita vence a los 30 días.
 
 - **Pasar a datos reales:** el Director entra a *Base de datos → Pasar a datos reales* (solo aparece mientras la base
   tiene la demostración). Se borra todo y se crean la sede, el Jefe de TI y el TICE con una contraseña inicial.
+- **Arrancar directamente con las cuentas reales (sin demostración):** en *Render → Environment* se ponen
+  `CORREO_JEFE`, `CORREO_TICE` (y opcionalmente `NOMBRE_JEFE`, `NOMBRE_TICE`, `SEDE_CODIGO`=CEN, `SEDE_NOMBRE`=Sede
+  Central). Al arrancar, si la base está vacía o tiene la demostración, se borra y quedan solo la sede y esas dos
+  cuentas (Jefe de TI y TICE). Sin `CLAVE_INICIAL` la contraseña es aleatoria y se entra solo con Google
+  (`GOOGLE_CLIENT_ID` es obligatorio en ese caso). Con `INVENTARIO_INICIAL` (ruta a un Excel, por ejemplo un *Secret
+  File* de Render: `/etc/secrets/inventario.xlsx`) se importa el inventario con las mismas reglas que *Importar Excel*.
+  Si la base ya tiene datos reales no se toca; si un correo no es del dominio no se instala nada. Los correos no van
+  en el código porque el repositorio es público.
 - **Inventario desde Excel:** el TICE usa *Inventario → Importar Excel* con el formato «INVENTARIO 2026»
   (CÓDIGO, CATEGORÍA, MARCA, MODELO, NÚMERO DE SERIE, CARACTERÍSTICAS, MAC, ESTADO ACTUAL, UBICACIÓN, RESPONSABLE,
   PROPIEDAD, FECHA DE INGRESO, GUIA/FACTURA, OBSERVACION, SEDE). Primero muestra la vista previa; las filas sin código

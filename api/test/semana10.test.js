@@ -1,4 +1,4 @@
-// Casos de prueba CP-23 a CP-30 (semana 10): importación del inventario desde Excel, correos del dominio
+// Casos de prueba CP-23 a CP-31 (semana 10): importación del inventario desde Excel, correos del dominio
 // institucional, inicio de sesión con Google, consulta SQL de solo lectura, separación de roles, KPI vigentes y respaldo.
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tice:tice@localhost:5432/tice_test';
 process.env.DOMINIOS_CORREO = 'colegio.edu.pe';
@@ -247,4 +247,33 @@ test('CP-30 La tabla de usuarios muestra el último ingreso y su método; con SO
   } finally {
     config.soloGoogle = false;
   }
+});
+
+// Va al final porque reemplaza la base de prueba
+test('CP-31 Con las cuentas reales en el entorno se reemplaza la demostración y se carga el inventario de la sede', async () => {
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const { instalarDesdeEntorno } = require('../src/scripts/instalar');
+  const ruta = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'tice-')), 'inventario.xlsx');
+  fs.writeFileSync(ruta, await excel(FILAS));
+  const env = { CORREO_JEFE: 'jefe.real@colegio.edu.pe', CORREO_TICE: 'tice.real@colegio.edu.pe', INVENTARIO_INICIAL: ruta };
+
+  // un correo fuera del dominio no borra nada
+  assert.equal(await instalarDesdeEntorno({ ...env, CORREO_JEFE: 'jefe@gmail.com' }), null);
+  assert.ok((await query(`SELECT 1 FROM logs_auditoria WHERE accion = 'CARGA_DEMO'`)).rowCount);
+
+  const r = await instalarDesdeEntorno(env);
+  assert.equal(r.inventario.importados, 2);
+  const { rows: usuarios } = await query('SELECT correo, rol FROM usuarios ORDER BY rol');
+  assert.deepEqual(usuarios, [{ correo: 'jefe.real@colegio.edu.pe', rol: 'DIRECTOR' }, { correo: 'tice.real@colegio.edu.pe', rol: 'TICE' }]);
+  assert.equal((await query(`SELECT 1 FROM logs_auditoria WHERE accion = 'CARGA_DEMO'`)).rowCount, 0);
+  assert.deepEqual((await query('SELECT codigo FROM equipos ORDER BY codigo')).rows.map((e) => e.codigo), ['XAIO-01', 'XTV-01']);
+  // sin CLAVE_INICIAL nadie conoce la contraseña: se entra con Google
+  const conClave = await request(app).post('/api/auth/login').send({ correo: 'tice.real@colegio.edu.pe', password: PASSWORD });
+  assert.equal(conClave.status, 401);
+
+  // al reiniciar no vuelve a instalar sobre datos reales
+  assert.equal(await instalarDesdeEntorno(env), null);
+  assert.equal((await query('SELECT count(*)::int AS n FROM equipos')).rows[0].n, 2);
 });

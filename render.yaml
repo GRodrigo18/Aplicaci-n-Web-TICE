@@ -25,6 +25,22 @@ services:
         generateValue: true
       - key: DATOS_DEMO
         value: "true"
+      # Cuentas reales (README → "Arrancar directamente con las cuentas reales"). Con CORREO_JEFE y CORREO_TICE
+      # puestos no se usa la demostración. No se escriben aquí porque el repositorio es público.
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: CORREO_JEFE
+        sync: false
+      - key: CORREO_TICE
+        sync: false
+      - key: NOMBRE_JEFE
+        sync: false
+      - key: NOMBRE_TICE
+        sync: false
+      - key: INVENTARIO_INICIAL
+        sync: false
+      - key: SOLO_GOOGLE
+        sync: false
 
   # Administrador de la base de datos en el navegador (Adminer), separado del sistema.
   # Se entra con el usuario y la contraseña de la base; ADMINER_DEFAULT_SERVER es su servidor.

@@ -5,6 +5,7 @@ const { migrar } = require('./scripts/migrate');
 const notificaciones = require('./lib/notificaciones');
 const escalamiento = require('./lib/escalamiento');
 const { actualizarDemo } = require('./scripts/seed');
+const { instalarDesdeEntorno } = require('./scripts/instalar');
 
 // El puerto se abre antes de preparar la base: con una base remota (por ejemplo Supabase) crear las tablas y
 // cargar la demostración puede tardar más de lo que el servicio de despliegue espera para ver el puerto abierto.
@@ -19,7 +20,9 @@ servidor.use(crearApp());
 
 async function preparar() {
   await migrar();
-  if (config.datosDemo && (await actualizarDemo())) console.log('Datos de demostración cargados');
+  // con las cuentas reales en el entorno no se usa la demostración
+  if (process.env.CORREO_JEFE && process.env.CORREO_TICE) await instalarDesdeEntorno();
+  else if (config.datosDemo && (await actualizarDemo())) console.log('Datos de demostración cargados');
   notificaciones.iniciarProceso();
   escalamiento.iniciarRevision(config.escalamientoIntervaloMs);
   listo = true;
