@@ -19,6 +19,7 @@ import Bitacora from './pages/Bitacora.jsx';
 import Administracion from './pages/Administracion.jsx';
 import BaseDatos from './pages/BaseDatos.jsx';
 import AbrirQr from './pages/AbrirQr.jsx';
+import ReporteQr from './pages/ReporteQr.jsx';
 
 // tice: solo el TICE (operación); director: solo el Jefe de TI (gestión)
 const MENU = [
@@ -173,7 +174,9 @@ function Layout({ children }) {
 export default function App() {
   const { usuario, cargando, catalogos, esDirector } = useSesion();
   if (cargando) return <div className="p-10 text-center text-slate-500">Cargando…</div>;
-  if (!usuario) return <Login />;
+  // el QR escaneado por alguien sin sesión (un docente) abre el reporte de fallas
+  const qr = window.location.pathname.match(/^\/q\/([a-f0-9]{24})$/i);
+  if (!usuario) return qr ? <ReporteQr token={qr[1]} /> : <Login />;
   if (!catalogos) return <div className="p-10 text-center text-slate-500">Cargando…</div>;
   return (
     <Routes>

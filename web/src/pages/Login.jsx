@@ -30,7 +30,7 @@ function Etiqueta({ codigo, Icono, semilla, className }) {
 }
 
 // Botón oficial de Google Identity Services; solo aparece si la API tiene GOOGLE_CLIENT_ID
-function BotonGoogle({ clientId, onCredencial }) {
+export function BotonGoogle({ clientId, onCredencial, texto = 'continue_with' }) {
   const caja = useRef(null);
   useEffect(() => {
     let vivo = true;
@@ -38,7 +38,7 @@ function BotonGoogle({ clientId, onCredencial }) {
       if (!vivo || !window.google?.accounts?.id || !caja.current) return;
       window.google.accounts.id.initialize({ client_id: clientId, callback: (r) => onCredencial(r.credential), ux_mode: 'popup' });
       window.google.accounts.id.renderButton(caja.current, {
-        theme: 'filled_blue', size: 'large', shape: 'pill', text: 'continue_with', locale: 'es', width: Math.min(caja.current.offsetWidth || 400, 400),
+        theme: 'filled_blue', size: 'large', shape: 'pill', text: texto, locale: 'es', width: Math.min(caja.current.offsetWidth || 400, 400),
       });
     };
     if (window.google?.accounts?.id) pintar();
@@ -51,7 +51,7 @@ function BotonGoogle({ clientId, onCredencial }) {
       s.addEventListener('load', pintar);
     }
     return () => { vivo = false; };
-  }, [clientId, onCredencial]);
+  }, [clientId, onCredencial, texto]);
   return <div ref={caja} className="flex min-h-[44px] w-full justify-center" />;
 }
 
