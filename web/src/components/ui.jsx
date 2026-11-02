@@ -18,7 +18,7 @@ export function hace(v) {
 }
 
 // Niveles de escalamiento de ITIL 4 (igual que api/src/lib/escalamiento.js)
-export const NIVELES = { 1: 'N1 · TICE de la sede', 2: 'N2 · Coordinación TICE / Director de TI', 3: 'N3 · Proveedor externo' };
+export const NIVELES = { 1: 'N1 · TICE de la sede', 2: 'N2 · Jefe de TI', 3: 'N3 · Proveedor externo' };
 export const NOMBRE_PRIORIDAD = { CRITICA: 'Crítica', ALTA: 'Alta', MEDIA: 'Media', BAJA: 'Baja' };
 export const COLOR_PRIORIDAD = { CRITICA: '#ef4444', ALTA: '#f59e0b', MEDIA: '#3b82f6', BAJA: '#94a3b8' };
 

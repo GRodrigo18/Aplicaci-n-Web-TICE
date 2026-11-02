@@ -93,13 +93,25 @@ router.get('/', h(async (req, res) => {
               AND ($1::int IS NULL OR l.sede_id = $1)
             ORDER BY l.secuencia DESC LIMIT 6`, [sede]),
     // PIR = fallas recibidas por correo en el periodo que quedaron como ticket con número, prioridad, SLA y fecha de
-    // cierre ÷ fallas recibidas por correo (los correos descartados con su motivo no son fallas)
-    query(`SELECT count(*) FILTER (WHERE c.estado <> 'DESCARTADO')::int AS n,
+    // cierre ÷ fallas recibidas por correo (los descartados con su motivo y las respuestas a un ticket no son fallas nuevas)
+    query(`SELECT count(*) FILTER (WHERE c.estado NOT IN ('DESCARTADO', 'RESPUESTA'))::int AS n,
                   count(*) FILTER (WHERE c.estado = 'CONVERTIDO' AND i.fecha_resolucion IS NOT NULL)::int AS con_ticket
              FROM correos_entrantes c LEFT JOIN incidencias i ON i.correo_id = c.id
             WHERE ${filtroSede('c')} AND ($2::date IS NULL OR c.recibido_en >= $2::date)
               AND ($3::date IS NULL OR c.recibido_en < $3::date + 1)`, p),
   ]);
+
+  // propios y alquilados, contratos por vencer, bajas por aprobar y mantenimientos preventivos próximos
+  const { rows: [inv] } = await query(
+    `SELECT count(*) FILTER (WHERE e.estado <> 'BAJA' AND coalesce(e.propiedad, 'PROPIO') = 'PROPIO')::int AS propios,
+            count(*) FILTER (WHERE e.estado <> 'BAJA' AND e.propiedad = 'ALQUILADO')::int AS alquilados,
+            count(*) FILTER (WHERE e.estado <> 'BAJA' AND e.propiedad = 'ALQUILADO' AND e.proveedor IS NULL)::int AS alquilados_sin_proveedor,
+            count(*) FILTER (WHERE e.estado <> 'BAJA' AND e.propiedad = 'ALQUILADO' AND e.fin_contrato <= current_date + 60)::int AS contratos_por_vencer,
+            count(*) FILTER (WHERE e.estado <> 'BAJA' AND e.baja_solicitada_en IS NOT NULL)::int AS bajas_por_aprobar,
+            (SELECT count(DISTINCT m.equipo_id) FROM mantenimientos m JOIN equipos x ON x.id = m.equipo_id
+              WHERE x.estado <> 'BAJA' AND m.proximo <= current_date + 15 AND ($1::int IS NULL OR m.sede_id = $1)
+                AND NOT EXISTS (SELECT 1 FROM mantenimientos m2 WHERE m2.equipo_id = m.equipo_id AND m2.fecha > m.fecha))::int AS mantenimientos_proximos
+       FROM equipos e WHERE ${filtroSede('e')}`, [sede]);
 
   const r = resueltos.rows[0];
   const eq = equipos.rows[0];
@@ -136,6 +148,7 @@ router.get('/', h(async (req, res) => {
     correos_por_atender: correos.rows[0],
     sin_verificar: sinVerificar.rows[0].n,
     actividad: actividad.rows,
+    inventario: inv,
     periodo: { desde, hasta },
     milisegundos: Date.now() - inicio,
   });

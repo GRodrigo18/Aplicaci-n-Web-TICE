@@ -119,7 +119,13 @@ test('CP-05 UC-05: no se puede dar de baja un equipo con un ticket abierto', asy
   const libre = (await crearEquipo('cen')).body;
   const sinMotivo = await request(app).post(`/api/equipos/${libre.id}/baja`).set(auth('cen')).send({});
   assert.equal(sinMotivo.status, 400);
-  const ok = await request(app).post(`/api/equipos/${libre.id}/baja`).set(auth('cen')).send({ motivo: 'Pantalla rota' });
+  // el TICE solicita la baja y el Jefe de TI la aprueba
+  const sol = await request(app).post(`/api/equipos/${libre.id}/baja`).set(auth('cen')).send({ motivo: 'Pantalla rota' });
+  assert.equal(sol.status, 200);
+  assert.notEqual(sol.body.estado, 'BAJA');
+  assert.ok(sol.body.baja_solicitada_en);
+  assert.equal((await request(app).post(`/api/equipos/${libre.id}/baja/aprobar`).set(auth('cen')).send({})).status, 403);
+  const ok = await request(app).post(`/api/equipos/${libre.id}/baja/aprobar`).set(auth('director')).send({});
   assert.equal(ok.status, 200);
   assert.equal(ok.body.estado, 'BAJA');
   const { rows } = await query('SELECT motivo_baja FROM equipos WHERE id = $1', [libre.id]);

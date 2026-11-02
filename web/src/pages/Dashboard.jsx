@@ -8,6 +8,7 @@ import { api, qs } from '../api.js';
 import { useSesion } from '../sesion.jsx';
 import { Aviso, Avatar, COLOR_PRIORIDAD, NIVELES, hace } from '../components/ui.jsx';
 import { describir } from '../components/describir.js';
+import AvisosInventario from '../components/AvisosInventario.jsx';
 import PanelOperativo from './PanelOperativo.jsx';
 
 const ICONOS_KPI = { TRI: Timer, TAI: ClipboardCheck, ICI: Boxes, PIR: ShieldCheck, DT: Activity };
@@ -221,6 +222,8 @@ function PanelGestion() {
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-5">
         {d.indicadores.map((k) => <TarjetaKpi key={k.sigla} k={k} />)}
       </div>
+
+      <AvisosInventario />
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <section className="tarjeta p-6 xl:col-span-2">

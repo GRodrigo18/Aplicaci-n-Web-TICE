@@ -41,6 +41,13 @@ services:
         sync: false
       - key: SOLO_GOOGLE
         sync: false
+      # Buzón TICE ↔ sistema con el script de Gmail (integraciones/gmail/README.md)
+      - key: INBOUND_TOKEN
+        sync: false
+      - key: CORREO_SALIDA
+        sync: false
+      - key: AUTO_TICKET_CORREO
+        sync: false
 
   # Administrador de la base de datos en el navegador (Adminer), separado del sistema.
   # Se entra con el usuario y la contraseña de la base; ADMINER_DEFAULT_SERVER es su servidor.

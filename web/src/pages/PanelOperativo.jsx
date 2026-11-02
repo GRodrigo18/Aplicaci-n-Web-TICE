@@ -7,6 +7,7 @@ import { api } from '../api.js';
 import { useSesion } from '../sesion.jsx';
 import { Anillo, Aviso, IconoTipo, Insignia, hace, insigniaEquipo } from '../components/ui.jsx';
 import { NuevoTicket, Sla } from './MesaAyuda.jsx';
+import AvisosInventario from '../components/AvisosInventario.jsx';
 
 function Cabecera({ icono: Icono, titulo, sub, a, texto = 'Ver todo' }) {
   return (
@@ -86,6 +87,8 @@ export default function PanelOperativo() {
           </Link>
         ))}
       </div>
+
+      <AvisosInventario />
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         <section className="tarjeta min-w-0 p-5 sm:p-6">

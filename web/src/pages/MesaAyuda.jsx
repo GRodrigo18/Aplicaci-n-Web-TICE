@@ -194,7 +194,9 @@ export function Sla({ t }) {
 // Escalamiento funcional (ITIL 4): al nivel 2 o al proveedor externo (nivel 3)
 function Escalar({ t, onEscalar }) {
   const [abierto, setAbierto] = useState(false);
-  const [f, setF] = useState({ nivel: String(t.nivel_escalamiento + 1), motivo: '', proveedor: '', caso_proveedor: '' });
+  // si el equipo es alquilado, su proveedor es quien atiende el nivel 3
+  const alquilado = t.equipos.find((e) => e.propiedad === 'ALQUILADO' && e.proveedor);
+  const [f, setF] = useState({ nivel: String(alquilado ? 3 : t.nivel_escalamiento + 1), motivo: alquilado ? 'Equipo alquilado: lo repara el proveedor' : '', proveedor: alquilado?.proveedor || '', caso_proveedor: '' });
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   if (t.nivel_escalamiento >= 3) return null;
   if (!abierto) return <button className="btn-secundario" onClick={() => setAbierto(true)}><ArrowUpRight size={16} />Escalar</button>;
@@ -216,6 +218,44 @@ function Escalar({ t, onEscalar }) {
         <button className="btn-secundario" onClick={() => setAbierto(false)}>Cancelar</button>
         <button className="btn-primario" disabled={!listo} onClick={() => onEscalar({ ...f, nivel: Number(f.nivel) })}>Escalar</button>
       </div>
+    </div>
+  );
+}
+
+// Conversación por correo con el solicitante: lo que escribió y lo que se le respondió.
+// Las respuestas que el docente envía con [TCK-…] en el asunto llegan aquí solas.
+function Conversacion({ t, onEnviado }) {
+  const [mensaje, setMensaje] = useState('');
+  const [error, setError] = useState('');
+  const [ocupado, setOcupado] = useState(false);
+  const enviar = async () => {
+    setOcupado(true);
+    setError('');
+    try { await api.post(`/incidencias/${t.id}/responder`, { mensaje }); setMensaje(''); onEnviado(); } catch (x) { setError(x.message); } finally { setOcupado(false); }
+  };
+  const ESTADO = { PENDIENTE: 'por enviar', ENVIANDO: 'enviando', ENVIADO: 'enviado', SIMULADO: 'simulado', ERROR: 'error al enviar' };
+  return (
+    <div>
+      <h3 className="mb-3 text-sm font-bold text-slate-800">Correo con el solicitante</h3>
+      <ul className="space-y-2 text-sm">
+        {(t.conversacion || []).map((m, i) => (
+          <li key={i} className={`rounded-xl p-3 ${m.sentido === 'RECIBIDO' ? 'mr-6 bg-slate-50' : 'ml-6 bg-marca-50'}`}>
+            <div className="flex justify-between gap-2 text-xs text-slate-500">
+              <span>{m.sentido === 'RECIBIDO' ? m.de : 'TICE'}</span>
+              <span className="whitespace-nowrap">{fechaHora(m.fecha)}{m.estado ? ` · ${ESTADO[m.estado] || m.estado}` : ''}</span>
+            </div>
+            <p className="mt-1 line-clamp-6 whitespace-pre-wrap text-slate-700">{m.cuerpo}</p>
+          </li>
+        ))}
+      </ul>
+      {!t.conversacion?.length && <p className="text-sm text-slate-400">Sin correos.</p>}
+      {t.estado !== 'CERRADO' && (
+        <div className="mt-3 space-y-2">
+          <textarea className="entrada" rows={2} placeholder={`Responder a ${t.solicitante_nombre || t.solicitante_correo}…`} value={mensaje} onChange={(e) => setMensaje(e.target.value)} />
+          <Aviso>{error}</Aviso>
+          <button className="btn-secundario py-2" disabled={!mensaje.trim() || ocupado} onClick={enviar}><Mail size={15} />Enviar respuesta</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -260,7 +300,11 @@ function DetalleTicket({ id, onCerrar, onCambio }) {
             <div><dt className="text-slate-500">Resolución</dt><dd className="font-medium text-slate-900">{fechaHora(t.fecha_resolucion)}</dd></div>
             {t.proveedor_externo && <div className="col-span-2"><dt className="text-slate-500">Proveedor externo</dt><dd className="font-medium">{t.proveedor_externo}{t.caso_proveedor ? ` · caso ${t.caso_proveedor}` : ''}</dd></div>}
             <div className="col-span-2"><dt className="mb-1 text-slate-500">Equipos</dt><dd className="flex flex-wrap gap-2">{t.equipos.map((e) => (
-              <span key={e.id} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2 py-1 font-mono text-xs"><IconoTipo tipo={e.tipo} size={13} />{e.codigo}</span>
+              <a key={e.id} href={`/inventario/${e.id}`} className="inline-flex flex-wrap items-center gap-1.5 rounded-lg bg-slate-100 px-2 py-1 text-xs hover:bg-slate-200">
+                <IconoTipo tipo={e.tipo} size={13} /><span className="font-mono">{e.codigo}</span>
+                {e.propiedad === 'ALQUILADO' && <span className="rounded bg-marca-100 px-1 font-semibold text-marca-700">Alquilado{e.proveedor ? ` · ${e.proveedor}` : ''}</span>}
+                {e.antecedentes > 0 && <span className="rounded bg-amber-100 px-1 font-semibold text-amber-800" title="Otros tickets de este equipo en los últimos 6 meses">{e.antecedentes} falla{e.antecedentes === 1 ? '' : 's'} antes</span>}
+              </a>
             ))}{!t.equipos.length && '—'}</dd></div>
           </dl>
           <div className="space-y-4 p-7">
@@ -288,13 +332,7 @@ function DetalleTicket({ id, onCerrar, onCambio }) {
             )}
             <div className="grid grid-cols-1 gap-6 pt-2 sm:grid-cols-2">
               <div><h3 className="mb-3 text-sm font-bold text-slate-800">Historial</h3><Historial registros={[...t.historial].reverse()} /></div>
-              <div>
-                <h3 className="mb-3 text-sm font-bold text-slate-800">Avisos por correo</h3>
-                <ul className="space-y-2 text-xs">{t.notificaciones.map((n) => (
-                  <li key={n.id} className="flex justify-between gap-2 rounded-lg bg-slate-50 p-2"><span>{n.asunto}</span><span className="whitespace-nowrap text-slate-500">{n.estado.toLowerCase()}</span></li>
-                ))}</ul>
-                {!t.notificaciones.length && <p className="text-sm text-slate-400">Sin avisos.</p>}
-              </div>
+              <Conversacion t={t} onEnviado={cargar} />
             </div>
           </div>
         </div>

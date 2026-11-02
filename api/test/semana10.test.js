@@ -171,7 +171,10 @@ test('CP-27 Roles: el Jefe de TI consulta y gestiona; el TICE registra el invent
   const tipo = (await query(`SELECT id FROM tipos_equipo WHERE nombre = 'Laptop'`)).rows[0].id;
   const nuevo = { codigo: 'XR-01', tipo_id: tipo, marca: 'HP', ubicacion: 'TICE' };
   assert.equal((await request(app).post('/api/equipos').set(auth('director')).send(nuevo)).status, 403);
-  const creado = await request(app).post('/api/equipos').set(auth('cen')).send({ ...nuevo, mac: 'AA-BB-CC-DD-EE-FF', propiedad: 'Alquilado' });
+  // un equipo alquilado necesita el proveedor (a quien se deriva la falla)
+  assert.equal((await request(app).post('/api/equipos').set(auth('cen')).send({ ...nuevo, propiedad: 'Alquilado' })).status, 400);
+  const creado = await request(app).post('/api/equipos').set(auth('cen'))
+    .send({ ...nuevo, mac: 'AA-BB-CC-DD-EE-FF', propiedad: 'Alquilado', proveedor: 'Proveedor de prueba' });
   assert.equal(creado.status, 201);
   assert.equal(creado.body.propiedad, 'ALQUILADO');
   assert.equal((await request(app).put(`/api/equipos/${creado.body.id}`).set(auth('director')).send({ ubicacion: 'X' })).status, 403);
