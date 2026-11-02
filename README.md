@@ -59,8 +59,9 @@ gratuita vence a los 30 días.
 - **Dominio:** `DOMINIOS_CORREO` (por defecto `nslm.edu.pe`) limita los correos de usuarios y buzones.
 - **Iniciar sesión con Google:** crear un *ID de cliente OAuth* (aplicación web) en Google Cloud con el origen
   autorizado de la URL del sistema y ponerlo en `GOOGLE_CLIENT_ID`. Solo entran cuentas del dominio que estén
-  registradas y activas en el sistema. Con `SOLO_GOOGLE=true` (y `GOOGLE_CLIENT_ID` puesto) se desactiva la
-  contraseña y solo se entra con Google. La tabla de usuarios muestra el último ingreso de cada cuenta y si fue con
+  registradas y activas en el sistema. Con `GOOGLE_CLIENT_ID` puesto se entra **solo con el botón
+  "Continuar con Google"** (la contraseña se desactiva; `SOLO_GOOGLE=false` la vuelve a aceptar). Sin `GOOGLE_CLIENT_ID`
+  la pantalla avisa y ofrece un ingreso de respaldo con contraseña. La tabla de usuarios muestra el último ingreso de cada cuenta y si fue con
   contraseña o con Google.
 - **Consulta SQL:** *Base de datos → Consulta SQL* ejecuta `SELECT` en una transacción de solo lectura (5 s, 500 filas).
 
@@ -98,7 +99,7 @@ La forma recomendada es el **script de Gmail** del buzón de la sede: [`integrac
 # PostgreSQL local con una base "tice" y otra "tice_test"
 cd api && npm install && npm run seed && npm run dev        # API en :3000
 cd web && npm install && npm run dev                        # web en :5173 (redirige /api a :3000)
-cd api && npm test                                          # 37 pruebas CP-01 a CP-37 contra tice_test
+cd api && npm test                                          # 38 pruebas CP-01 a CP-38 contra tice_test
 ```
 
 Variables: `DATABASE_URL` (por defecto `postgres://tice:tice@localhost:5432/tice`) y `TEST_DATABASE_URL`
@@ -126,6 +127,7 @@ Variables: `DATABASE_URL` (por defecto `postgres://tice:tice@localhost:5432/tice
 | Historial de mantenimiento (preventivo y correctivo desde el ticket resuelto) y antecedentes de fallas | RF-04 | UC-09 | CP-34 |
 | Correo: ticket automático, respuestas unidas al ticket y salida por Gmail | RF-10 | UC-07, UC-10 | CP-35, CP-36 |
 | Baja solicitada por el TICE y aprobada por el Jefe de TI | RF-02 | UC-05 | CP-05, CP-37 |
+| Reporte de fallas por QR: el docente escanea la etiqueta y reporta con su Google, sin cuenta | RF-03, RF-09 | UC-07 | CP-38 |
 
 ### Roles: Jefe de TI y TICE de sede
 
@@ -140,6 +142,16 @@ Variables: `DATABASE_URL` (por defecto `postgres://tice:tice@localhost:5432/tice
 | Reasignar un ticket a otro TICE | Sí | No |
 | Alertas de SLA y escalamientos | Las recibe | No |
 | Exportar CSV, usuarios y sedes, bitácora, base de datos | Sí | No |
+
+### Cómo reporta un docente
+
+1. **Escaneando el QR del equipo** con la cámara del celular: se abre "Reportar una falla de este equipo" con el
+   código y la ubicación. Escribe qué pasa, elige cuándo lo necesita y a quiénes afecta, y pulsa
+   **Continuar con Google** con su cuenta del colegio. No necesita cuenta en el sistema: Google confirma quién es.
+   El ticket se crea con el equipo vinculado, la prioridad ITIL calculada y asignado al TICE de la sede; el docente
+   recibe el acuse por correo. Si vuelve a escanear el mismo equipo con su reporte abierto, ve su número de ticket
+   en vez de crear otro. Sin `GOOGLE_CLIENT_ID`, el botón abre un correo al buzón TICE con el equipo en el asunto.
+2. **Por correo** al buzón TICE de la sede (ver *Correo*).
 
 ### Equipos propios y alquilados
 

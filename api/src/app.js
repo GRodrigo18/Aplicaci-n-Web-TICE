@@ -21,6 +21,8 @@ function crearApp() {
   app.use('/api/auth', require('./routes/auth'));
   app.post('/api/correos/entrante', correos.rutaEntrante(config));
   app.use('/api/correos/salida', correos.rutasSalida(config));
+  // reporte de fallas por QR para docentes, sin cuenta (Google confirma quién reporta)
+  app.use('/api/publico', require('./routes/publico'));
 
   app.use('/api', autenticar);
   app.use('/api', require('./routes/admin'));

@@ -16,6 +16,7 @@ const ACCIONES = {
   VERIFICADO: () => 'Verificado con QR',
   REUBICADO_EN_AUDITORIA: () => 'Reubicado en una auditoría',
   MANTENIMIENTO: (d) => `Mantenimiento ${String(d.tipo || '').toLowerCase()}: ${d.descripcion || ''}`,
+  REPORTE_QR: (d) => `Reportado escaneando el QR${d.docente ? ` por ${d.docente}` : ''}`,
   CORREO_RECIBIDO: (d) => `Respuesta del solicitante por correo${d.de ? ` (${d.de})` : ''}`,
   RESPONDER_CORREO: () => 'Respuesta enviada al solicitante',
   SOLICITAR_BAJA: () => 'Baja solicitada al Jefe de TI',

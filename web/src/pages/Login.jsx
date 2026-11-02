@@ -30,7 +30,7 @@ function Etiqueta({ codigo, Icono, semilla, className }) {
 }
 
 // Botón oficial de Google Identity Services; solo aparece si la API tiene GOOGLE_CLIENT_ID
-function BotonGoogle({ clientId, onCredencial }) {
+export function BotonGoogle({ clientId, onCredencial, texto = 'continue_with' }) {
   const caja = useRef(null);
   useEffect(() => {
     let vivo = true;
@@ -38,7 +38,7 @@ function BotonGoogle({ clientId, onCredencial }) {
       if (!vivo || !window.google?.accounts?.id || !caja.current) return;
       window.google.accounts.id.initialize({ client_id: clientId, callback: (r) => onCredencial(r.credential), ux_mode: 'popup' });
       window.google.accounts.id.renderButton(caja.current, {
-        theme: 'outline', size: 'large', shape: 'pill', text: 'signin_with', locale: 'es', width: Math.min(caja.current.offsetWidth || 400, 400),
+        theme: 'filled_blue', size: 'large', shape: 'pill', text: texto, locale: 'es', width: Math.min(caja.current.offsetWidth || 400, 400),
       });
     };
     if (window.google?.accounts?.id) pintar();
@@ -51,7 +51,7 @@ function BotonGoogle({ clientId, onCredencial }) {
       s.addEventListener('load', pintar);
     }
     return () => { vivo = false; };
-  }, [clientId, onCredencial]);
+  }, [clientId, onCredencial, texto]);
   return <div ref={caja} className="flex min-h-[44px] w-full justify-center" />;
 }
 
@@ -70,6 +70,8 @@ export default function Login() {
   const [correo, setCorreo] = useState('');
   const [password, setPassword] = useState('');
   const [ver, setVer] = useState(false);
+  // sin GOOGLE_CLIENT_ID en el servidor: ingreso de respaldo con contraseña, oculto hasta que se pida
+  const [respaldo, setRespaldo] = useState(false);
   const [error, setError] = useState('');
   const [ocupado, setOcupado] = useState(false);
   const [oscuro, setOscuro] = useState(() => document.documentElement.classList.contains('dark'));
@@ -101,7 +103,7 @@ export default function Login() {
         <div className="relative flex items-center gap-3 p-14">
           <Logo />
           <div>
-            <div className="text-2xl font-extrabold text-white">TICE · Merced</div>
+            <div className="text-2xl font-extrabold text-white">TICE · Avantgard</div>
             <div className="text-sm text-slate-400">Área de Tecnologías de la Información y Comunicación Educativa</div>
           </div>
         </div>
@@ -127,22 +129,29 @@ export default function Login() {
           {oscuro ? <Sun size={20} /> : <Moon size={20} />}
         </button>
         <form onSubmit={enviar} className="w-full max-w-md">
-          <div className="mb-8 flex items-center gap-3 lg:hidden"><Logo /><span className="text-xl font-extrabold">TICE · Merced</span></div>
+          <div className="mb-8 flex items-center gap-3 lg:hidden"><Logo /><span className="text-xl font-extrabold">TICE · Avantgard</span></div>
           <p className="text-[15px] font-semibold text-marca-500">Inventario · Mesa de ayuda · Pistoleo QR</p>
           <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-900">Bienvenido de vuelta</h1>
-          <p className="mt-3 text-[15px] text-slate-500">Ingresa con tu correo institucional <b className="font-semibold text-slate-700">@{dominio}</b>. El TICE ve la operación de su sede; el Jefe de TI, los indicadores de todas.</p>
-          {config.google_client_id && (
-            <>
-              <div className="mt-8"><BotonGoogle clientId={config.google_client_id} onCredencial={alGoogle} /></div>
-              {!config.solo_google && (
-                <div className="my-6 flex items-center gap-3 text-xs font-medium uppercase tracking-wide text-slate-400">
-                  <span className="h-px flex-1 bg-slate-200" />o con tu contraseña<span className="h-px flex-1 bg-slate-200" />
-                </div>
-              )}
-            </>
+          <p className="mt-3 text-[15px] text-slate-500">Ingresa con tu cuenta de Google institucional <b className="font-semibold text-slate-700">@{dominio}</b>. Solo entran el Jefe de TI y los TICE registrados en el sistema; cada uno ve lo que le corresponde.</p>
+          {config.google_client_id ? (
+            <div className="mt-8">
+              <BotonGoogle clientId={config.google_client_id} onCredencial={alGoogle} />
+              {ocupado && <p className="mt-3 text-center text-sm text-slate-500">Validando tu cuenta…</p>}
+            </div>
+          ) : (
+            <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              El ingreso con Google aún no está activado. Quien administra el sistema debe poner <b>GOOGLE_CLIENT_ID</b> en Render
+              (guía: «Ingresar con Google»).
+              {!respaldo && <button type="button" className="mt-2 block font-semibold text-amber-800 underline" onClick={() => setRespaldo(true)}>Ingreso de respaldo con contraseña</button>}
+            </div>
           )}
-          {config.solo_google ? <div className="mt-4"><Aviso>{error}</Aviso></div> : <>
-          <label className={`${config.google_client_id ? '' : 'mt-8 '}block`}>
+          {config.google_client_id && config.solo_google ? <div className="mt-4"><Aviso>{error}</Aviso></div> : !config.google_client_id && !respaldo ? null : <>
+          {config.google_client_id && (
+            <div className="my-6 flex items-center gap-3 text-xs font-medium uppercase tracking-wide text-slate-400">
+              <span className="h-px flex-1 bg-slate-200" />o con tu contraseña<span className="h-px flex-1 bg-slate-200" />
+            </div>
+          )}
+          <label className={`${config.google_client_id ? '' : 'mt-6 '}block`}>
             <span className="etiqueta">Correo institucional</span>
             <span className="relative block">
               <Mail size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -163,7 +172,7 @@ export default function Login() {
           <button className="btn-primario mt-5 w-full py-3.5 text-base" disabled={ocupado}>{ocupado ? 'Ingresando…' : <>Ingresar <ArrowRight size={18} /></>}</button>
           </>}
           <p className="mt-5 flex items-start gap-2 text-[13px] text-slate-400">
-            <ShieldCheck size={16} className="mt-0.5 shrink-0" />Sesión protegida con JWT. 5 intentos fallidos bloquean la cuenta 15 minutos.
+            <ShieldCheck size={16} className="mt-0.5 shrink-0" />Google confirma tu identidad; el sistema valida que tu correo sea de un TICE o del Jefe de TI activo.
           </p>
         </form>
       </section>
