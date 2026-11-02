@@ -59,8 +59,9 @@ gratuita vence a los 30 días.
 - **Dominio:** `DOMINIOS_CORREO` (por defecto `nslm.edu.pe`) limita los correos de usuarios y buzones.
 - **Iniciar sesión con Google:** crear un *ID de cliente OAuth* (aplicación web) en Google Cloud con el origen
   autorizado de la URL del sistema y ponerlo en `GOOGLE_CLIENT_ID`. Solo entran cuentas del dominio que estén
-  registradas y activas en el sistema. Con `SOLO_GOOGLE=true` (y `GOOGLE_CLIENT_ID` puesto) se desactiva la
-  contraseña y solo se entra con Google. La tabla de usuarios muestra el último ingreso de cada cuenta y si fue con
+  registradas y activas en el sistema. Con `GOOGLE_CLIENT_ID` puesto se entra **solo con el botón
+  "Continuar con Google"** (la contraseña se desactiva; `SOLO_GOOGLE=false` la vuelve a aceptar). Sin `GOOGLE_CLIENT_ID`
+  la pantalla avisa y ofrece un ingreso de respaldo con contraseña. La tabla de usuarios muestra el último ingreso de cada cuenta y si fue con
   contraseña o con Google.
 - **Consulta SQL:** *Base de datos → Consulta SQL* ejecuta `SELECT` en una transacción de solo lectura (5 s, 500 filas).
 

@@ -3,6 +3,8 @@
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tice:tice@localhost:5432/tice_test';
 process.env.DOMINIOS_CORREO = 'colegio.edu.pe';
 process.env.GOOGLE_CLIENT_ID = 'cliente-de-prueba.apps.googleusercontent.com';
+// estas pruebas entran con contraseña; CP-30 activa el modo solo Google
+process.env.SOLO_GOOGLE = 'false';
 
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');

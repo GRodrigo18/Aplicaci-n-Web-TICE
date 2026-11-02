@@ -123,7 +123,7 @@ function Layout({ children }) {
         <div className="flex items-center gap-3 px-6 pb-6 pt-6">
           <Logo />
           <div>
-            <div className="text-[17px] font-extrabold leading-tight text-slate-900">TICE·Merced</div>
+            <div className="text-[17px] font-extrabold leading-tight text-slate-900">TICE·Avantgard</div>
             <div className="text-xs text-slate-500">Inventario y mesa de ayuda</div>
           </div>
         </div>
