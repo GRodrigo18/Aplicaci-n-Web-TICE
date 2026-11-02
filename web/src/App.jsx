@@ -18,6 +18,7 @@ import MesaAyuda from './pages/MesaAyuda.jsx';
 import Bitacora from './pages/Bitacora.jsx';
 import Administracion from './pages/Administracion.jsx';
 import BaseDatos from './pages/BaseDatos.jsx';
+import AbrirQr from './pages/AbrirQr.jsx';
 
 // tice: solo el TICE (operación); director: solo el Jefe de TI (gestión)
 const MENU = [
@@ -141,7 +142,7 @@ function Layout({ children }) {
           <Avatar nombre={usuario.nombre} tamano="h-10 w-10 text-sm" />
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold text-slate-800">{usuario.nombre}</div>
-            <div className="truncate text-xs text-slate-500">{esDirector ? 'Director de TI · todas las sedes' : `Usuario TICE · ${usuario.sede_nombre}`}</div>
+            <div className="truncate text-xs text-slate-500">{esDirector ? 'Jefe de TI · todas las sedes' : `TICE · ${usuario.sede_nombre}`}</div>
           </div>
           <button className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" onClick={alternarTema} title={oscuro ? 'Modo claro' : 'Modo oscuro'} aria-label="Cambiar tema">
             {oscuro ? <Sun size={18} /> : <Moon size={18} />}
@@ -183,6 +184,7 @@ export default function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/inventario" element={<Inventario />} />
             <Route path="/inventario/:id" element={<Inventario />} />
+            <Route path="/q/:token" element={<AbrirQr />} />
             <Route path="/pistoleo" element={<Pistoleo />} />
             <Route path="/auditorias" element={<Auditorias />} />
             <Route path="/auditorias/:id" element={<Auditorias />} />

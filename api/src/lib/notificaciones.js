@@ -15,7 +15,8 @@ async function encolar(c, ticket, tipo) {
       + `Registramos su reporte con el número ${ticket.numero}.\n`
       + `Prioridad: ${ticket.prioridad_nombre} (tiempo objetivo de atención: ${ticket.sla_minutos} minutos).\n`
       + `Estado: ${ESTADOS[ticket.estado]}.\n\nDescripción:\n${ticket.descripcion}\n\n`
-      + 'Le avisaremos por este medio cada vez que cambie el estado.\n\nÁrea TICE';
+      + 'Le avisaremos por este medio cada vez que cambie el estado. Si necesita agregar algo, responda este correo '
+      + 'sin cambiar el asunto y su mensaje llegará al ticket.\n\nÁrea TICE';
   } else {
     asunto = `[${ticket.numero}] Su ticket pasó a ${ESTADOS[ticket.estado]}`;
     cuerpo = `Hola${ticket.solicitante_nombre ? ' ' + ticket.solicitante_nombre : ''}:\n\n`
@@ -49,6 +50,8 @@ function obtenerTransporte() {
 
 // Procesa la bandeja de salida. Sin servidor SMTP configurado, los correos quedan como simulados.
 async function procesarPendientes(limite = 20) {
+  // con CORREO_SALIDA=gmail los envía el script del buzón (GET /api/correos/salida)
+  if (config.correoSalida === 'gmail') return 0;
   const { rows } = await query(
     `SELECT * FROM notificaciones WHERE estado = 'PENDIENTE' OR (estado = 'ERROR' AND intentos < 3)
       ORDER BY id LIMIT $1`, [limite]);

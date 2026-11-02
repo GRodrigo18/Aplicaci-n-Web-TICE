@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 
-// Contenido de la etiqueta: lo lee la cámara o la pistola lectora (que escribe como teclado)
-export const contenidoQr = (token) => `TICE:${token}`;
+// Contenido de la etiqueta: un enlace al sistema. La cámara de cualquier celular lo abre (pide iniciar sesión) y
+// el pistoleo QR y la pistola lectora lo siguen leyendo: la API toma el código de 24 caracteres del enlace.
+export const contenidoQr = (token) => `${window.location.origin}/q/${token}`;
 
 export function ImagenQr({ token, tamano = 160 }) {
   const [src, setSrc] = useState('');
@@ -21,6 +22,7 @@ export function EtiquetaEquipo({ equipo, tamano = 96 }) {
         <div>{equipo.tipo}</div>
         <div>{equipo.marca} {equipo.modelo || ''}</div>
         <div className="text-slate-500">{equipo.sede_nombre}</div>
+        {equipo.propiedad === 'ALQUILADO' && <div className="mt-0.5 font-bold uppercase">Alquilado{equipo.proveedor ? ` · ${equipo.proveedor}` : ''}</div>}
         <div className="mt-1 text-[9px] uppercase tracking-wide text-slate-400">Área TICE</div>
       </div>
     </div>

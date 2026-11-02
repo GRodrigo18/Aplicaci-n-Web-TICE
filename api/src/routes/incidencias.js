@@ -19,7 +19,11 @@ const SELECT_TICKET = `
          -- minutos transcurridos hasta la resolución (o hasta ahora si sigue abierto)
          round(extract(epoch FROM (coalesce(i.fecha_resolucion, now()) - i.fecha_registro)) / 60)::int AS minutos,
          (extract(epoch FROM (coalesce(i.fecha_resolucion, now()) - i.fecha_registro)) / 60 > p.sla_minutos) AS fuera_de_sla,
-         coalesce((SELECT json_agg(json_build_object('id', e.id, 'codigo', e.codigo, 'ubicacion', e.ubicacion, 'tipo', te.nombre) ORDER BY e.codigo)
+         coalesce((SELECT json_agg(json_build_object('id', e.id, 'codigo', e.codigo, 'ubicacion', e.ubicacion, 'tipo', te.nombre,
+                     'propiedad', e.propiedad, 'proveedor', e.proveedor, 'contrato', e.contrato,
+                     -- antecedentes: otros tickets del mismo equipo en los últimos 180 días
+                     'antecedentes', (SELECT count(*) FROM incidencia_equipos ie2 JOIN incidencias i2 ON i2.id = ie2.incidencia_id
+                                       WHERE ie2.equipo_id = e.id AND i2.id <> i.id AND i2.fecha_registro > now() - interval '180 days')) ORDER BY e.codigo)
                      FROM incidencia_equipos ie JOIN equipos e ON e.id = ie.equipo_id JOIN tipos_equipo te ON te.id = e.tipo_id
                     WHERE ie.incidencia_id = i.id), '[]') AS equipos
     FROM incidencias i
@@ -62,13 +66,22 @@ router.get('/:id', h(async (req, res) => {
   const t = await ticketPorId(query, entero(req.params.id, 'id', { requerido: true }));
   if (!t) throw noEncontrado('Ticket');
   verificarSede(req.usuario, t.sede_id);
-  const [historial, avisos] = await Promise.all([
+  const [historial, avisos, recibidos] = await Promise.all([
     query(`SELECT l.fecha, l.usuario_correo, u.nombre AS usuario_nombre, l.accion, l.detalle
              FROM logs_auditoria l LEFT JOIN usuarios u ON u.id = l.usuario_id
             WHERE l.entidad = 'incidencia' AND l.entidad_id = $1 ORDER BY l.secuencia`, [t.id]),
-    query('SELECT id, destinatario, asunto, estado, creado_en, enviado_en FROM notificaciones WHERE incidencia_id = $1 ORDER BY id', [t.id]),
+    query('SELECT id, destinatario, asunto, cuerpo, estado, creado_en, enviado_en FROM notificaciones WHERE incidencia_id = $1 ORDER BY id', [t.id]),
+    // correo que originó el ticket y las respuestas que llegaron después con [TCK-…] en el asunto
+    query(`SELECT id, remitente, remitente_nombre, asunto, cuerpo, recibido_en FROM correos_entrantes
+            WHERE incidencia_id = $1 OR id = $2 ORDER BY recibido_en`, [t.id, t.correo_id]),
   ]);
-  res.json({ ...t, historial: historial.rows, notificaciones: avisos.rows });
+  // conversación por correo con el solicitante, en orden de fecha
+  const conversacion = [
+    ...recibidos.rows.map((c) => ({ sentido: 'RECIBIDO', de: c.remitente_nombre || c.remitente, asunto: c.asunto, cuerpo: c.cuerpo, fecha: c.recibido_en })),
+    ...avisos.rows.filter((n) => n.destinatario === t.solicitante_correo)
+      .map((n) => ({ sentido: 'ENVIADO', para: n.destinatario, asunto: n.asunto, cuerpo: n.cuerpo, fecha: n.creado_en, estado: n.estado })),
+  ].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+  res.json({ ...t, historial: historial.rows, notificaciones: avisos.rows, conversacion });
 }));
 
 // Valida los equipos que se vinculan: deben existir y ser de la sede del ticket
@@ -188,6 +201,17 @@ router.post('/:id/solucion', h(async (req, res) => {
         });
       }
     }
+    // la solución queda como mantenimiento correctivo en el historial de cada equipo del ticket
+    const { rows: afectados } = await c.query(
+      `SELECT e.id, e.codigo, e.sede_id FROM equipos e JOIN incidencia_equipos ie ON ie.equipo_id = e.id
+        WHERE ie.incidencia_id = $1 AND e.estado <> 'BAJA'`, [id]);
+    const realizadoPor = t.nivel_escalamiento === 3 && t.proveedor_externo ? t.proveedor_externo : req.usuario.nombre;
+    for (const e of afectados) {
+      await c.query(
+        `INSERT INTO mantenimientos (equipo_id, sede_id, tipo, descripcion, realizado_por, usuario_id, incidencia_id)
+         VALUES ($1,$2,'CORRECTIVO',$3,$4,$5,$6)`,
+        [e.id, e.sede_id, diagnostico ? `${diagnostico} — ${solucion}` : solucion, realizadoPor, req.usuario.id, id]);
+    }
     const actualizado = await ticketPorId(c, id);
     await registrar(c, req.usuario, {
       entidad: 'incidencia', entidadId: id, accion: 'RESOLVER', sedeId: t.sede_id,
@@ -231,12 +255,19 @@ router.post('/:id/escalar', h(async (req, res) => {
   const id = entero(req.params.id, 'id', { requerido: true });
   const nivel = entero(req.body.nivel, 'nivel', { requerido: true });
   const motivo = texto(req.body.motivo, 'motivo', { requerido: true, max: 1000 });
-  const proveedor = texto(req.body.proveedor, 'proveedor', { max: 120 });
+  let proveedor = texto(req.body.proveedor, 'proveedor', { max: 120 });
   const caso = texto(req.body.caso_proveedor, 'número de caso del proveedor', { max: 60 });
   if (![2, 3].includes(nivel)) throw invalido('El nivel de escalamiento debe ser 2 o 3');
-  if (nivel === 3 && !proveedor) throw invalido('Para escalar al nivel 3 indique el proveedor externo', { campo: 'proveedor' });
   const ticket = await tx(async (c) => {
     const t = await bloquearTicket(c, id, req.usuario);
+    // si la falla es de un equipo alquilado, el proveedor es el dueño del equipo
+    if (nivel === 3 && !proveedor) {
+      const { rows: [alq] } = await c.query(
+        `SELECT e.proveedor FROM equipos e JOIN incidencia_equipos ie ON ie.equipo_id = e.id
+          WHERE ie.incidencia_id = $1 AND e.propiedad = 'ALQUILADO' AND e.proveedor IS NOT NULL LIMIT 1`, [id]);
+      proveedor = alq?.proveedor ?? null;
+    }
+    if (nivel === 3 && !proveedor) throw invalido('Para escalar al nivel 3 indique el proveedor externo', { campo: 'proveedor' });
     if (!['PENDIENTE', 'EN_PROCESO'].includes(t.estado)) throw new HttpError(409, 'Solo se escala un ticket abierto');
     if (nivel <= t.nivel_escalamiento) {
       throw new HttpError(409, `El ticket ya está en el nivel ${t.nivel_escalamiento} (${NIVELES[t.nivel_escalamiento]})`);
@@ -253,6 +284,21 @@ router.post('/:id/escalar', h(async (req, res) => {
     return ticketPorId(c, id);
   });
   res.json(ticket);
+}));
+
+// Responder al solicitante por correo desde el ticket. El asunto lleva [TCK-…] para que su respuesta vuelva al ticket.
+router.post('/:id/responder', h(async (req, res) => {
+  const id = entero(req.params.id, 'id', { requerido: true });
+  const mensaje = texto(req.body.mensaje, 'mensaje', { requerido: true, max: 5000 });
+  await tx(async (c) => {
+    const t = await bloquearTicket(c, id, req.usuario);
+    await notificaciones.encolarInterno(c, id, t.solicitante_correo, `[${t.numero}] Re: ${t.asunto}`.slice(0, 250),
+      `${mensaje}\n\n${req.usuario.nombre}\nÁrea TICE\n\n(Responda este correo sin cambiar el asunto para que su mensaje llegue al ticket ${t.numero}.)`);
+    await registrar(c, req.usuario, {
+      entidad: 'incidencia', entidadId: id, accion: 'RESPONDER_CORREO', sedeId: t.sede_id, detalle: { numero: t.numero, mensaje },
+    });
+  });
+  res.status(201).json({ ok: true });
 }));
 
 // El Director puede reasignar un ticket a otro TICE (apoyo de otra sede)

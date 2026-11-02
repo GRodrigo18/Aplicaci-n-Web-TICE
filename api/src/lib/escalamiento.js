@@ -1,5 +1,5 @@
 // Escalamiento de incidencias según ITIL 4.
-// Nivel 1: TICE de la sede. Nivel 2: Coordinación General TICE / Director de TI (rol Director).
+// Nivel 1: TICE de la sede. Nivel 2: Jefe de TI (rol Director).
 // Nivel 3: proveedor externo (garantía del fabricante, proveedor de internet o servicio técnico).
 // Escalamiento funcional: lo pide el TICE cuando la falla supera su capacidad o necesita al proveedor.
 // Escalamiento jerárquico: automático, con alerta al 75 % del SLA y paso al nivel 2 al vencer el SLA.
@@ -7,7 +7,7 @@ const { query, tx } = require('../db');
 const { registrar } = require('./bitacora');
 const notificaciones = require('./notificaciones');
 
-const NIVELES = { 1: 'TICE de la sede', 2: 'Coordinación TICE / Director de TI', 3: 'Proveedor externo' };
+const NIVELES = { 1: 'TICE de la sede', 2: 'Jefe de TI', 3: 'Proveedor externo' };
 const UMBRAL_ALERTA = 0.75;
 
 // Sube el nivel de un ticket bloqueado (FOR UPDATE) dentro de la transacción c

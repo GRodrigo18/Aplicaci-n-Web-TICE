@@ -38,7 +38,7 @@ async function autenticar(req, _res, next) {
 const esDirector = (u) => u.rol === 'DIRECTOR';
 
 function soloDirector(req, _res, next) {
-  if (!esDirector(req.usuario)) return next(prohibido('Solo el Director de TI puede realizar esta operación'));
+  if (!esDirector(req.usuario)) return next(prohibido('Solo el Jefe de TI puede realizar esta operación'));
   next();
 }
 

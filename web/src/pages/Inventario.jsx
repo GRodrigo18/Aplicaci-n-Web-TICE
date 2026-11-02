@@ -10,9 +10,9 @@ export function FormEquipo({ equipo, onGuardado, onCerrar }) {
   const { catalogos } = useSesion();
   const nuevo = !equipo;
   const CAMPOS = ['tipo_id', 'marca', 'modelo', 'serie', 'fecha_adquisicion', 'estado', 'ubicacion', 'observaciones',
-    'caracteristicas', 'mac', 'propiedad', 'responsable', 'guia_factura'];
+    'caracteristicas', 'mac', 'propiedad', 'responsable', 'guia_factura', 'proveedor', 'contrato', 'fin_contrato'];
   const [f, setF] = useState(() => equipo
-    ? Object.fromEntries(CAMPOS.map((k) => [k, equipo[k] ?? '']))
+    ? Object.fromEntries(CAMPOS.map((k) => [k, k === 'fin_contrato' || k === 'fecha_adquisicion' ? String(equipo[k] ?? '').slice(0, 10) : equipo[k] ?? '']))
     : { codigo: '', ...Object.fromEntries(CAMPOS.map((k) => [k, ''])), estado: 'OPERATIVO', propiedad: 'PROPIO', responsable: 'TICE' });
   const [error, setError] = useState('');
   const [ocupado, setOcupado] = useState(false);
@@ -51,9 +51,14 @@ export function FormEquipo({ equipo, onGuardado, onCerrar }) {
         <Campo etiqueta="Guía / factura"><input className="entrada" value={f.guia_factura} onChange={set('guia_factura')} /></Campo>
         <Campo etiqueta="Propiedad">
           <select className="entrada" value={f.propiedad} onChange={set('propiedad')}>
-            <option value="">Sin dato</option><option value="PROPIO">Propio</option><option value="ALQUILADO">Alquilado</option>
+            <option value="">Sin dato</option><option value="PROPIO">Propio del colegio</option><option value="ALQUILADO">Alquilado (de un proveedor)</option>
           </select>
         </Campo>
+        {f.propiedad === 'ALQUILADO' && <>
+          <Campo etiqueta="Proveedor del alquiler *" ayuda="A quien se deriva la falla (nivel 3)"><input className="entrada" value={f.proveedor} onChange={set('proveedor')} placeholder="Empresa que alquila el equipo" required /></Campo>
+          <Campo etiqueta="N.° de contrato"><input className="entrada" value={f.contrato} onChange={set('contrato')} /></Campo>
+          <Campo etiqueta="Fin del contrato"><input type="date" className="entrada" value={f.fin_contrato} onChange={set('fin_contrato')} /></Campo>
+        </>}
         <Campo etiqueta="Responsable"><input className="entrada" value={f.responsable} onChange={set('responsable')} /></Campo>
         <Campo etiqueta="Estado">
           <select className="entrada" value={f.estado} onChange={set('estado')}>
@@ -73,6 +78,7 @@ export function FormEquipo({ equipo, onGuardado, onCerrar }) {
 }
 
 export function FormBaja({ equipo, onGuardado, onCerrar }) {
+  const { esDirector } = useSesion();
   const [motivo, setMotivo] = useState('');
   const [error, setError] = useState('');
   const [confirmar, setConfirmar] = useState(false);
@@ -85,15 +91,18 @@ export function FormBaja({ equipo, onGuardado, onCerrar }) {
     }
   };
   return (
-    <Modal titulo={`Dar de baja ${equipo.codigo}`} onCerrar={onCerrar}>
-      <p className="mb-4 text-sm text-slate-600">La baja es lógica: el equipo y su historial se conservan. No se puede dar de baja un equipo con un ticket abierto.</p>
+    <Modal titulo={esDirector ? `Dar de baja ${equipo.codigo}` : `Solicitar la baja de ${equipo.codigo}`} onCerrar={onCerrar}>
+      <p className="mb-4 text-sm text-slate-600">
+        {esDirector ? 'La baja es lógica: el equipo y su historial se conservan.' : 'El Jefe de TI revisará la solicitud y aprobará o rechazará la baja. El equipo y su historial se conservan.'}
+        {' '}No se puede dar de baja un equipo con un ticket abierto.
+      </p>
       <Campo etiqueta="Motivo de la baja *"><textarea className="entrada" rows={3} value={motivo} onChange={(e) => setMotivo(e.target.value)} /></Campo>
       <div className="mt-3"><Aviso>{error}</Aviso></div>
       <div className="mt-5 flex justify-end gap-2">
         <button className="btn-secundario" onClick={onCerrar}>Cancelar</button>
         {confirmar
-          ? <button className="btn-peligro" onClick={enviar}>Sí, dar de baja</button>
-          : <button className="btn-peligro" disabled={!motivo.trim()} onClick={() => setConfirmar(true)}>Dar de baja</button>}
+          ? <button className="btn-peligro" onClick={enviar}>{esDirector ? 'Sí, dar de baja' : 'Sí, enviar solicitud'}</button>
+          : <button className="btn-peligro" disabled={!motivo.trim()} onClick={() => setConfirmar(true)}>{esDirector ? 'Dar de baja' : 'Solicitar baja'}</button>}
       </div>
     </Modal>
   );
@@ -185,10 +194,11 @@ function ResumenInventario({ equipos }) {
     ['Averiados o en mantenimiento', n((e) => ['AVERIADO', 'MANTENIMIENTO'].includes(e.estado)), 'text-red-600'],
     ['Obsoletos', n((e) => e.estado === 'OBSOLETO'), 'text-amber-600'],
     ['Alquilados', n((e) => e.propiedad === 'ALQUILADO'), 'text-marca-500'],
+    ['Bajas por aprobar', n((e) => e.baja_solicitada_en), 'text-red-600'],
     ['Nunca verificados con QR', n((e) => !e.ultima_verificacion), 'text-amber-600'],
   ];
   return (
-    <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+    <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
       {datos.map(([t, v, c]) => <div key={t} className="tarjeta p-4"><div className="text-xs text-slate-500">{t}</div><div className={`mt-1 text-2xl font-extrabold ${c}`}>{v}</div></div>)}
     </div>
   );
@@ -198,7 +208,12 @@ export default function Inventario() {
   const { catalogos, sedeParam, esDirector } = useSesion();
   const { id } = useParams();
   const navegar = useNavigate();
-  const [filtros, setFiltros] = useState({ q: '', tipo_id: '', estado: '', ubicacion: '', marca: '', sin_verificar: '', propiedad: '' });
+  // los avisos del panel abren el inventario ya filtrado (?propiedad=ALQUILADO, ?por_vencer=true, ?baja_pendiente=true)
+  const [filtros, setFiltros] = useState(() => {
+    const u = new URLSearchParams(window.location.search);
+    return { q: '', tipo_id: '', estado: '', ubicacion: '', marca: '', sin_verificar: '', propiedad: u.get('propiedad') || '',
+      por_vencer: u.get('por_vencer') || '', baja_pendiente: u.get('baja_pendiente') || '' };
+  });
   const [equipos, setEquipos] = useState([]);
   const [todos, setTodos] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -278,6 +293,8 @@ export default function Inventario() {
         <div className="flex flex-wrap items-center gap-2">
           <span className="w-16 text-sm text-slate-500">Propiedad</span>
           {[['PROPIO', 'Propio'], ['ALQUILADO', 'Alquilado']].map(([v, t]) => <button key={v} className={`chip ${filtros.propiedad === v ? 'chip-activo' : ''}`} onClick={() => set('propiedad', v)}>{t}</button>)}
+          <button className={`chip ${filtros.por_vencer ? 'chip-activo' : ''}`} onClick={() => set('por_vencer', 'true')}>Contrato por vencer (60 días)</button>
+          <button className={`chip ${filtros.baja_pendiente ? 'chip-activo' : ''}`} onClick={() => set('baja_pendiente', 'true')}>Baja por aprobar</button>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto]">
           <select className="entrada" value={filtros.marca} onChange={(e) => setFiltros({ ...filtros, marca: e.target.value })}>
@@ -287,7 +304,7 @@ export default function Inventario() {
             <option value="">Todas las ubicaciones</option>{ubicaciones.map((m) => <option key={m}>{m}</option>)}
           </select>
           <button className="btn px-3 text-slate-400 hover:text-slate-700 disabled:opacity-40" disabled={!hayFiltros}
-            onClick={() => setFiltros({ q: '', tipo_id: '', estado: '', ubicacion: '', marca: '', sin_verificar: '', propiedad: '' })}><X size={16} />Limpiar filtros</button>
+            onClick={() => setFiltros({ q: '', tipo_id: '', estado: '', ubicacion: '', marca: '', sin_verificar: '', propiedad: '', por_vencer: '', baja_pendiente: '' })}><X size={16} />Limpiar filtros</button>
         </div>
       </div>
 
@@ -311,7 +328,7 @@ export default function Inventario() {
               <th className="w-10"><input type="checkbox" className="h-4 w-4 rounded" aria-label="Seleccionar todos" checked={lista.length > 0 && seleccion.size === lista.length}
                 onChange={(e) => setSeleccion(e.target.checked ? new Set(lista.map((x) => x.id)) : new Set())} /></th>
               <th><button className="inline-flex items-center gap-1" onClick={() => setOrden(-orden)}>Código {orden > 0 ? <ArrowUp size={14} /> : <ArrowDown size={14} />}</button></th>
-              <th>Equipo</th>{!esDirector && <th>Serie / MAC</th>}<th>Estado</th>{esDirector && <th>Sede</th>}<th>Ubicación</th>{!esDirector && <th>Propiedad</th>}<th>Verificado</th>
+              <th>Equipo</th>{!esDirector && <th>Serie / MAC</th>}<th>Estado</th>{esDirector && <th>Sede</th>}<th>Ubicación</th><th>Propiedad</th><th>Verificado</th>
             </tr>
           </thead>
           <tbody>
@@ -329,7 +346,10 @@ export default function Inventario() {
                 <td>{insigniaEquipo(e)}</td>
                 {esDirector && <td className="text-slate-600">{e.sede_nombre}</td>}
                 <td className="text-slate-600">{e.ubicacion}</td>
-                {!esDirector && <td className="text-xs text-slate-500">{e.propiedad === 'ALQUILADO' ? 'Alquilado' : e.propiedad === 'PROPIO' ? 'Propio' : '—'}</td>}
+                <td className="text-xs text-slate-500">{e.propiedad === 'ALQUILADO'
+                  ? <span className="font-semibold text-marca-600">Alquilado{e.proveedor ? <span className="block font-normal text-slate-500">{e.proveedor}</span> : <span className="block font-normal text-amber-600">falta proveedor</span>}</span>
+                  : e.propiedad === 'PROPIO' ? 'Propio' : '—'}
+                  {e.baja_solicitada_en && <span className="block font-semibold text-red-600">Baja por aprobar</span>}</td>
                 <td className={`text-xs ${e.ultima_verificacion ? 'text-slate-400' : 'font-semibold text-amber-600'}`}>{hace(e.ultima_verificacion)}</td>
               </tr>
             ))}

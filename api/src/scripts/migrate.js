@@ -5,6 +5,13 @@ const { pool } = require('../db');
 
 const SCHEMA = path.join(__dirname, '..', '..', 'db', 'schema.sql');
 const ESCALAMIENTO = path.join(__dirname, '..', '..', 'db', 'escalamiento.sql');
+const CONSOLIDACION = path.join(__dirname, '..', '..', 'db', 'consolidacion.sql');
+
+// Cambios que se aplican después del esquema, en orden (cada archivo es idempotente)
+async function actualizar() {
+  await pool.query(fs.readFileSync(ESCALAMIENTO, 'utf8'));
+  await pool.query(fs.readFileSync(CONSOLIDACION, 'utf8'));
+}
 
 // Borra solo los objetos del sistema en el esquema public (vistas, tablas, secuencias y funciones), sin borrar
 // el esquema: en servicios administrados como Supabase el esquema public trae permisos propios del proveedor.
@@ -41,12 +48,12 @@ async function migrar({ forzar = false } = {}) {
   await esperarBase();
   const { rows } = await pool.query(`SELECT to_regclass('public.logs_auditoria') AS t`);
   if (rows[0].t && !forzar) {
-    await pool.query(fs.readFileSync(ESCALAMIENTO, 'utf8'));
+    await actualizar();
     return false;
   }
   if (forzar) await pool.query(BORRAR_TODO);
   await pool.query(fs.readFileSync(SCHEMA, 'utf8'));
-  await pool.query(fs.readFileSync(ESCALAMIENTO, 'utf8'));
+  await actualizar();
   console.log('Base de datos creada');
   return true;
 }

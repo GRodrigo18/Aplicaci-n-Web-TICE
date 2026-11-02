@@ -24,6 +24,7 @@ const ENCABEZADOS = {
   ubicacion: ['UBICACION'],
   responsable: ['RESPONSABLE'],
   propiedad: ['PROPIEDAD'],
+  proveedor: ['PROVEEDOR', 'EMPRESA PROVEEDORA', 'PROVEEDOR DEL ALQUILER'],
   fecha: ['FECHA DE INGRESO', 'FECHA DE ADQUISICION'],
   guia_factura: ['GUIA/FACTURA', 'GUIA / FACTURA', 'FACTURA'],
   observaciones: ['OBSERVACION', 'OBSERVACIONES'],
@@ -168,6 +169,10 @@ async function analizarExcel(buffer, { tipos, sede }) {
       d.propiedad = PROPIEDAD[normalizar(propiedad)] ?? null;
       if (!d.propiedad) aviso(`Propiedad no reconocida («${propiedad}»); se deja vacía`);
     }
+    // columna opcional PROVEEDOR: solo se usa si trae dato, para no borrar el proveedor registrado en la web
+    const proveedor = limpiar(crudo.proveedor);
+    if (proveedor && d.propiedad === 'ALQUILADO') d.proveedor = proveedor.slice(0, 120);
+    else if (d.propiedad === 'ALQUILADO') aviso('Equipo alquilado sin proveedor: complételo en la ficha del equipo');
     const fecha = leerFecha(crudo.fecha);
     d.fecha_adquisicion = fecha.fecha;
     if (fecha.nota) d.observaciones = d.observaciones ? `${d.observaciones}. ${fecha.nota}` : fecha.nota;

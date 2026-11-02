@@ -23,7 +23,7 @@ function FormUsuario({ usuario, onCerrar, onGuardado }) {
         <Campo etiqueta="Nombre *"><input className="entrada" value={f.nombre} onChange={set('nombre')} required /></Campo>
         {nuevo && <Campo etiqueta="Correo institucional *" ayuda="Solo se aceptan correos del dominio del colegio. Con ese correo también puede entrar con Google."><input type="email" className="entrada" value={f.correo} onChange={set('correo')} required /></Campo>}
         <Campo etiqueta="Rol">
-          <select className="entrada" value={f.rol} onChange={set('rol')}><option value="TICE">Usuario TICE</option><option value="DIRECTOR">Director de TI</option></select>
+          <select className="entrada" value={f.rol} onChange={set('rol')}><option value="TICE">Usuario TICE</option><option value="DIRECTOR">Jefe de TI</option></select>
         </Campo>
         {f.rol === 'TICE' && <Campo etiqueta="Sede *" ayuda="Cada sede tiene un solo TICE activo"><SelectorSede valor={f.sede_id} onChange={(v) => setF({ ...f, sede_id: v })} sedes={sedes} todas={false} /></Campo>}
         <Campo etiqueta={nuevo ? 'Contraseña inicial * (mínimo 8 caracteres)' : 'Nueva contraseña (dejar vacío para no cambiar)'}>
@@ -57,6 +57,20 @@ function FormSede({ sede, onCerrar, onGuardado }) {
   );
 }
 
+// Alcance de cada rol (igual que las reglas de la API)
+const PERMISOS = [
+  ['Ver inventario, tickets y auditorías', 'Todas las sedes', 'Solo su sede'],
+  ['Registrar, editar, importar y etiquetar equipos', 'No (supervisa)', 'Sí'],
+  ['Registrar mantenimientos', 'No (consulta el historial)', 'Sí'],
+  ['Dar de baja un equipo', 'Aprueba o rechaza; puede darla directamente', 'Solo la solicita'],
+  ['Pistoleo QR, traslados y auditorías físicas', 'Ve los resultados', 'Los ejecuta'],
+  ['Atender tickets y responder por correo', 'Sí, en cualquier sede (nivel 2)', 'Sí, en su sede (nivel 1)'],
+  ['Reasignar un ticket a otro TICE', 'Sí', 'No'],
+  ['Recibir alertas de SLA y escalamientos', 'Sí', 'No'],
+  ['Exportar el inventario a CSV', 'Sí', 'No'],
+  ['Usuarios, sedes, bitácora y base de datos', 'Sí', 'No'],
+];
+
 export default function Administracion() {
   const { sedes, recargarContexto, usuario: yo } = useSesion();
   const [usuarios, setUsuarios] = useState([]);
@@ -78,7 +92,7 @@ export default function Administracion() {
           <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Sede</th><th>Último ingreso</th><th>Estado</th><th /></tr></thead>
           <tbody>{usuarios.map((u) => (
             <tr key={u.id}>
-              <td>{u.nombre}</td><td>{u.correo}</td><td>{u.rol === 'DIRECTOR' ? 'Director de TI' : 'Usuario TICE'}</td><td>{u.sede_nombre || 'Todas'}</td>
+              <td>{u.nombre}</td><td>{u.correo}</td><td>{u.rol === 'DIRECTOR' ? 'Jefe de TI' : 'TICE de sede'}</td><td>{u.sede_nombre || 'Todas'}</td>
               <td className="whitespace-nowrap text-xs">{u.ultimo_acceso ? <>{fechaHora(u.ultimo_acceso)} · {u.ultimo_metodo === 'GOOGLE' ? 'con Google' : 'con contraseña'}</> : <span className="text-slate-400">Nunca</span>}</td>
               <td>
                 <Insignia valor={u.activo ? 'OPERATIVO' : 'BAJA'} texto={u.activo ? 'Activo' : 'Inactivo'} />
@@ -103,6 +117,15 @@ export default function Administracion() {
               <td>{usuarios.find((u) => u.sede_id === s.id && u.rol === 'TICE' && u.activo)?.nombre || <span className="text-amber-600">Sin TICE</span>}</td>
               <td className="text-right"><button className="text-xs text-marca-600 hover:underline" onClick={() => setModal({ tipo: 'sede', s })}>Editar</button></td>
             </tr>
+          ))}</tbody>
+        </table>
+      </div>
+      <h2 className="mb-2 mt-8 font-semibold text-slate-700">Qué puede hacer cada rol</h2>
+      <div className="tarjeta overflow-x-auto">
+        <table className="tabla">
+          <thead><tr><th>Tarea</th><th>Jefe de TI</th><th>TICE de sede</th></tr></thead>
+          <tbody>{PERMISOS.map(([tarea, jefe, tice]) => (
+            <tr key={tarea}><td>{tarea}</td><td>{jefe}</td><td>{tice}</td></tr>
           ))}</tbody>
         </table>
       </div>

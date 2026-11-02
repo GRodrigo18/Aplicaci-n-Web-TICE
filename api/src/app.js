@@ -20,6 +20,7 @@ function crearApp() {
   app.get('/api/salud', (_req, res) => res.json({ ok: true }));
   app.use('/api/auth', require('./routes/auth'));
   app.post('/api/correos/entrante', correos.rutaEntrante(config));
+  app.use('/api/correos/salida', correos.rutasSalida(config));
 
   app.use('/api', autenticar);
   app.use('/api', require('./routes/admin'));

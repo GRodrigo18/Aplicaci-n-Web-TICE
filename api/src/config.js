@@ -16,6 +16,11 @@ const config = {
     pass: env.SMTP_PASS || '',
     from: env.SMTP_FROM || 'TICE <tice@colegio.edu.pe>',
   },
+  // Cómo salen los correos: con SMTP_HOST por SMTP; con CORREO_SALIDA=gmail los envía el script del buzón (Apps Script);
+  // sin ninguno quedan como "simulados"
+  correoSalida: env.SMTP_HOST ? 'smtp' : (env.CORREO_SALIDA || '').toLowerCase() === 'gmail' ? 'gmail' : 'simulado',
+  // AUTO_TICKET_CORREO=true: los correos nuevos de cuentas institucionales se convierten solos en ticket
+  autoTicketCorreo: env.AUTO_TICKET_CORREO === 'true',
   notificacionesIntervaloMs: Number(env.NOTIFICACIONES_INTERVALO_MS || 15000),
   escalamientoIntervaloMs: Number(env.ESCALAMIENTO_INTERVALO_MS || 60000),
   // Despliegue en un solo servicio (Render): la API sirve también la aplicación web compilada

@@ -27,6 +27,9 @@ docker compose exec api node src/scripts/crear-director.js "Nombre del Director"
   Crea 5 sedes, un TICE por sede, 92 equipos, 6 tickets y 3 correos. Contraseña de todas las cuentas: `Tice2026!`
   (Director: `director.ti@colegio.edu.pe`; TICE Sede Central: `tice.cen.usuario@colegio.edu.pe`).
 
+¿Render + Supabase o un servidor del colegio? Vea la comparación y la recomendación en
+[`docs/servidor-y-datos.md`](docs/servidor-y-datos.md).
+
 ### En la nube (Render, plan gratuito)
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/GRodrigo18/Aplicaci-n-Web-TICE)
@@ -75,12 +78,19 @@ docker compose start api
 
 ### Correo
 
-- **Entrada (bandeja por sede):** cada sede tiene su buzón TICE (`correo_buzon`). Un reenvío automático del buzón
-  puede publicar cada correo en `POST /api/correos/entrante` con la cabecera `X-Inbound-Token: <INBOUND_TOKEN>` y el cuerpo
-  `{ "para", "de", "nombre", "asunto", "cuerpo" }`. Mientras no exista ese reenvío, el TICE registra el correo con
-  "Registrar correo recibido".
-- **Salida (acuse y avisos):** con `SMTP_HOST` configurado se envían por SMTP; sin él quedan en la bandeja de salida
-  con estado `SIMULADO` (riesgo R08).
+La forma recomendada es el **script de Gmail** del buzón de la sede: [`integraciones/gmail`](integraciones/gmail/README.md)
+(10 minutos, sin SMTP). Con él:
+
+- **Entrada:** cada correo nuevo del buzón llega a *Correos por atender* (`POST /api/correos/entrante` con la cabecera
+  `X-Inbound-Token: <INBOUND_TOKEN>`). Con `AUTO_TICKET_CORREO=true` un correo de una cuenta institucional se convierte
+  solo en ticket con la propuesta (categoría, impacto, urgencia y equipos mencionados).
+- **Respuestas en el mismo ticket:** todo correo del sistema lleva `[TCK-AAAA-NNNNN]` en el asunto. Si el docente
+  responde, su mensaje (sin el texto citado) se une al ticket y aparece en *Correo con el solicitante*. El TICE también
+  responde desde el ticket (`POST /api/incidencias/:id/responder`).
+- **Salida:** con `CORREO_SALIDA=gmail` el script toma los correos por enviar (`GET /api/correos/salida`) y los envía
+  desde el buzón. Con `SMTP_HOST` se envían por SMTP (en un servidor propio). Sin ninguno quedan como `SIMULADO`.
+  Render gratis bloquea los puertos SMTP, por eso allí se usa el script.
+- Sin el script, el TICE puede registrar un correo a mano con "Registrar correo recibido".
 
 ## Desarrollo
 
@@ -88,7 +98,7 @@ docker compose start api
 # PostgreSQL local con una base "tice" y otra "tice_test"
 cd api && npm install && npm run seed && npm run dev        # API en :3000
 cd web && npm install && npm run dev                        # web en :5173 (redirige /api a :3000)
-cd api && npm test                                          # 29 pruebas CP-01 a CP-29 contra tice_test
+cd api && npm test                                          # 37 pruebas CP-01 a CP-37 contra tice_test
 ```
 
 Variables: `DATABASE_URL` (por defecto `postgres://tice:tice@localhost:5432/tice`) y `TEST_DATABASE_URL`
@@ -111,20 +121,51 @@ Variables: `DATABASE_URL` (por defecto `postgres://tice:tice@localhost:5432/tice
 | Dashboard: TRI, TAI, ICI, PIR, DT | RF-06, RNF-02 | UC-11 | CP-14, CP-28 |
 | Importación del inventario desde Excel, correos del dominio, Google, roles | RF-01, RF-02 | UC-01, UC-04 | CP-23 a CP-27 |
 | Respaldo diario (Docker) y descargable desde la web (.sql con pg_dump) | RNF-07 | — | CP-29 |
+| QR con enlace: la cámara del celular abre la ficha del equipo | RF-09 | UC-13 | CP-32 |
+| Equipos propios y alquilados (proveedor, contrato, fin de contrato; falla derivada al proveedor) | RF-02 | UC-04 | CP-33 |
+| Historial de mantenimiento (preventivo y correctivo desde el ticket resuelto) y antecedentes de fallas | RF-04 | UC-09 | CP-34 |
+| Correo: ticket automático, respuestas unidas al ticket y salida por Gmail | RF-10 | UC-07, UC-10 | CP-35, CP-36 |
+| Baja solicitada por el TICE y aprobada por el Jefe de TI | RF-02 | UC-05 | CP-05, CP-37 |
+
+### Roles: Jefe de TI y TICE de sede
+
+| Tarea | Jefe de TI (rol `DIRECTOR`) | TICE de sede (rol `TICE`) |
+| --- | --- | --- |
+| Ver inventario, tickets y auditorías | Todas las sedes | Solo su sede |
+| Registrar, editar, importar y etiquetar equipos | No (supervisa) | Sí |
+| Registrar mantenimientos | No (consulta el historial) | Sí |
+| Dar de baja un equipo | Aprueba o rechaza la solicitud; puede darla directamente | Solo la solicita |
+| Pistoleo QR, traslados y auditorías físicas | Ve los resultados | Los ejecuta |
+| Atender tickets y responder por correo | Sí, en cualquier sede (nivel 2) | Sí, en su sede (nivel 1) |
+| Reasignar un ticket a otro TICE | Sí | No |
+| Alertas de SLA y escalamientos | Las recibe | No |
+| Exportar CSV, usuarios y sedes, bitácora, base de datos | Sí | No |
+
+### Equipos propios y alquilados
+
+Cada equipo es **Propio** (del colegio) o **Alquilado** (por ejemplo las All in One de un proveedor). Un alquilado exige
+el **proveedor** y guarda el contrato y su fecha de fin. El panel avisa los contratos que vencen en 60 días y los
+alquilados sin proveedor. Si un equipo alquilado falla, el ticket muestra el proveedor y el escalamiento al nivel 3 lo
+toma solo. La etiqueta QR impresa dice "ALQUILADO · proveedor".
+
+La etiqueta QR ahora es un **enlace** (`https://<sistema>/q/<código>`): cualquier celular la abre con su cámara, pide
+iniciar sesión y muestra la ficha con el historial, los mantenimientos y los tickets. Las etiquetas antiguas (`TICE:…`)
+siguen funcionando en el pistoleo. Vuelva a imprimir las etiquetas para tener el enlace.
 
 ### Escalamiento (ITIL 4)
 
 | Nivel | Quién atiende | Cuándo llega el ticket |
 | --- | --- | --- |
 | N1 | TICE de la sede (asignado automáticamente) | Al registrarse el ticket |
-| N2 | Coordinación General TICE / Director de TI (rol Director) | El TICE lo escala (funcional) o vence el SLA sin resolverse (jerárquico, automático) |
+| N2 | Jefe de TI (rol Director) | El TICE lo escala (funcional) o vence el SLA sin resolverse (jerárquico, automático) |
 | N3 | Proveedor externo: garantía del fabricante, proveedor de internet, servicio técnico | El TICE o el Director lo escala indicando el proveedor y el número de caso |
 
 - Al llegar al **75 % del SLA** sin resolverse, el sistema avisa por correo al nivel 2 y marca el ticket "en riesgo".
 - Al **vencer el SLA** en el nivel 1, el ticket pasa solo al nivel 2 y se avisa al Director, que puede reasignarlo a otro TICE.
 - El escalamiento solo sube de nivel, exige un motivo y queda en la bitácora (`ESCALAR`, `ALERTA_SLA`). En el nivel 3 se
   avisa además al solicitante. La revisión corre cada minuto (`ESCALAMIENTO_INTERVALO_MS`).
-- Las bases creadas antes de esta versión se actualizan solas al iniciar la API (`api/db/escalamiento.sql`).
+- Las bases creadas antes de esta versión se actualizan solas al iniciar la API (`api/db/escalamiento.sql` y
+  `api/db/consolidacion.sql`), sin perder datos.
 
 ### Indicadores
 
