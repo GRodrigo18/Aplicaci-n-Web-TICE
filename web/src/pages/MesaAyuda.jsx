@@ -510,7 +510,7 @@ function Correos({ alCambiar }) {
       Promise.all(l.map((c) => api.get(`/correos/${c.id}/propuesta`).then((r) => [c.id, r.propuesta]).catch(() => [c.id, null])))
         .then((pares) => setPropuestas(Object.fromEntries(pares)));
     }
-  }), [sedeParam, estado]);
+  }).catch(() => {}), [sedeParam, estado]); // si falla una actualización, se reintenta a los 30 s
   useEffect(() => { cargar(); const t = setInterval(cargar, 30000); return () => clearInterval(t); }, [cargar]);
   const hecho = (msg) => { setModal(null); setAviso(msg); cargar(); alCambiar(); };
   const c = correos.find((x) => x.id === sel);
@@ -598,7 +598,7 @@ export default function MesaAyuda() {
   const setAbierto = (id) => { const p = new URLSearchParams(params); if (id) p.set('ticket', id); else p.delete('ticket'); setParams(p); };
   const setVista = (v) => setParams(v === 'correos' ? { vista: 'correos' } : {});
 
-  const cargar = useCallback(() => api.get(`/incidencias${qs({ sede_id: sedeParam })}`).then(setTickets).catch((e) => setError(e.message)), [sedeParam]);
+  const cargar = useCallback(() => api.get(`/incidencias${qs({ sede_id: sedeParam })}`).then((l) => { setTickets(l); setError(''); }).catch((e) => setError(e.message)), [sedeParam]);
   const contar = useCallback(() => api.get(`/correos${qs({ sede_id: sedeParam, estado: 'POR_ATENDER' })}`).then((l) => setConteo(l.length)).catch(() => {}), [sedeParam]);
   useEffect(() => { cargar(); contar(); const t = setInterval(() => { cargar(); contar(); }, 30000); return () => clearInterval(t); }, [cargar, contar]);
 
