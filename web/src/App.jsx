@@ -20,6 +20,7 @@ import Administracion from './pages/Administracion.jsx';
 import BaseDatos from './pages/BaseDatos.jsx';
 import AbrirQr from './pages/AbrirQr.jsx';
 import ReporteQr from './pages/ReporteQr.jsx';
+import Privacidad from './pages/Privacidad.jsx';
 
 // tice: solo el TICE (operación); director: solo el Jefe de TI (gestión)
 const MENU = [
@@ -173,6 +174,8 @@ function Layout({ children }) {
 
 export default function App() {
   const { usuario, cargando, catalogos, esDirector } = useSesion();
+  // página pública, con o sin sesión (Google la pide para publicar el ingreso)
+  if (window.location.pathname === '/privacidad') return <Privacidad />;
   if (cargando) return <div className="p-10 text-center text-slate-500">Cargando…</div>;
   // el QR escaneado por alguien sin sesión (un docente) abre el reporte de fallas
   const qr = window.location.pathname.match(/^\/q\/([a-f0-9]{24})$/i);

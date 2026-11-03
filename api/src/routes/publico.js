@@ -36,7 +36,7 @@ router.get('/equipos/:token', h(async (req, res) => {
     `SELECT count(*)::int AS n FROM incidencias i JOIN incidencia_equipos ie ON ie.incidencia_id = i.id
       WHERE ie.equipo_id = $1 AND i.estado IN ('PENDIENTE', 'EN_PROCESO')`, [e.id]);
   const { id, sede_id, ...visible } = e;
-  res.json({ ...visible, reportes_abiertos: n, google_client_id: config.googleClientId || null, dominios: config.dominiosCorreo });
+  res.json({ ...visible, reportes_abiertos: n, google_client_id: config.googleClientId || null, dominios: config.qrSoloInstitucional ? config.dominiosCorreo : [] });
 }));
 
 // Urgencia: ¿la falla impide la clase ahora? Impacto: ¿a cuántos afecta?
@@ -47,12 +47,12 @@ router.post('/equipos/:token/reportes', h(async (req, res) => {
   const t = token(req.params.token);
   if (!config.googleClientId) throw new HttpError(404, 'El reporte con Google no está activado; escriba al buzón TICE de la sede');
   const credencial = String(req.body?.credential || '');
-  if (!credencial) throw invalido('Ingrese con su cuenta de Google institucional');
+  if (!credencial) throw invalido('Ingrese con su cuenta de Google');
   const descripcion = texto(req.body.descripcion, 'descripción', { requerido: true, max: 2000 });
   const cuando = opcion(req.body.cuando, '¿cuándo lo necesita?', Object.keys(URGENCIA));
   const aQuien = opcion(req.body.a_quien, '¿a quiénes afecta?', Object.keys(IMPACTO));
   const g = await verificarTokenGoogle(credencial, config.googleClientId);
-  if (!config.dominiosCorreo.includes(dominioDe(g.correo))) {
+  if (config.qrSoloInstitucional && !config.dominiosCorreo.includes(dominioDe(g.correo))) {
     throw new HttpError(403, `Use su cuenta institucional (@${config.dominiosCorreo.join(' o @')})`);
   }
   const resultado = await tx(async (c) => {

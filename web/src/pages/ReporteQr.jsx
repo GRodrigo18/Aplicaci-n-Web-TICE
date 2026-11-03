@@ -23,7 +23,7 @@ function Opciones({ titulo, opciones, valor, onChange }) {
 }
 
 // Página que abre la cámara del celular al escanear la etiqueta QR, para quien no tiene sesión iniciada.
-// El docente ve qué equipo es, cuenta qué pasa y envía el reporte con su Google institucional.
+// El docente ve qué equipo es, cuenta qué pasa y envía el reporte con su cuenta de Google.
 export default function ReporteQr({ token }) {
   const [e, setE] = useState(null);
   const [error, setError] = useState('');
@@ -87,7 +87,7 @@ export default function ReporteQr({ token }) {
                     </a>
                   ) : listo ? (
                     <>
-                      <p className="mb-3 text-center text-sm text-slate-500">Envía el reporte con tu cuenta @{e.dominios[0]}:</p>
+                      <p className="mb-3 text-center text-sm text-slate-500">{e.dominios?.length ? <>Envía el reporte con tu cuenta @{e.dominios[0]}:</> : 'Envía el reporte con tu cuenta de Google:'}</p>
                       <BotonGoogle clientId={e.google_client_id} onCredencial={enviar} texto="continue_with" />
                       {enviando && <p className="mt-3 text-center text-sm text-slate-500">Enviando…</p>}
                     </>
