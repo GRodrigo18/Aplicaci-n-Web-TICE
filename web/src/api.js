@@ -19,20 +19,40 @@ export class ApiError extends Error {
   }
 }
 
+const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
+const SIN_CONEXION = 'No hay conexión con el servidor. Revisa tu internet e inténtalo de nuevo en unos segundos.';
+
+// fetch con mensaje en español si no hay red (el navegador dice "Failed to fetch")
+async function conectar(url, opciones) {
+  try { return await fetch(url, opciones); } catch { throw new ApiError(0, { error: SIN_CONEXION }); }
+}
+
 async function solicitud(metodo, ruta, cuerpo) {
   const token = leerToken();
-  const r = await fetch(`/api${ruta}`, {
+  const opciones = {
     method: metodo,
     headers: {
       ...(cuerpo !== undefined ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: cuerpo !== undefined ? JSON.stringify(cuerpo) : undefined,
-  });
+  };
+  // las consultas (GET) se reintentan solas si el servidor se está reiniciando o despertando
+  let r;
+  for (let intento = 0; ; intento++) {
+    try {
+      r = await conectar(`/api${ruta}`, opciones);
+      if (metodo !== 'GET' || ![502, 503, 504].includes(r.status) || intento >= 3) break;
+    } catch (err) {
+      if (metodo !== 'GET' || intento >= 3) throw err;
+    }
+    await esperar(2000 * (intento + 1));
+  }
   const tipo = r.headers.get('content-type') || '';
   const datos = tipo.includes('application/json') ? await r.json() : await r.text();
   if (!r.ok) {
     if (r.status === 401 && token && ruta !== '/auth/login') alExpirar();
+    if ([502, 503, 504].includes(r.status) && typeof datos === 'string') throw new ApiError(r.status, { error: 'El sistema se está reiniciando. Inténtalo de nuevo en un minuto.' });
     throw new ApiError(r.status, typeof datos === 'string' ? { error: datos } : datos);
   }
   return datos;
@@ -47,7 +67,7 @@ export const api = {
 
 // Envía un archivo tal cual (el Excel del inventario) y devuelve la respuesta JSON
 export async function subirArchivo(ruta, archivo) {
-  const r = await fetch(`/api${ruta}`, {
+  const r = await conectar(`/api${ruta}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/octet-stream', Authorization: `Bearer ${leerToken()}` },
     body: archivo,
@@ -59,7 +79,7 @@ export async function subirArchivo(ruta, archivo) {
 
 // Descarga un archivo protegido (CSV) con el token
 export async function descargar(ruta, nombre) {
-  const r = await fetch(`/api${ruta}`, { headers: { Authorization: `Bearer ${leerToken()}` } });
+  const r = await conectar(`/api${ruta}`, { headers: { Authorization: `Bearer ${leerToken()}` } });
   if (!r.ok) {
     const cuerpo = await r.json().catch(() => ({}));
     throw new ApiError(r.status, cuerpo);
