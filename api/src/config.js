@@ -27,6 +27,9 @@ const config = {
   webDist: env.WEB_DIST || '',
   datosDemo: env.DATOS_DEMO === 'true',
   // Solo se aceptan cuentas y buzones del dominio institucional (varios separados por coma)
+  // Reporte por QR: por defecto cualquier cuenta de Google (los equipos están dentro del colegio);
+  // QR_SOLO_INSTITUCIONAL=true exige el dominio institucional
+  qrSoloInstitucional: env.QR_SOLO_INSTITUCIONAL === 'true',
   dominiosCorreo: (env.DOMINIOS_CORREO || 'nslm.edu.pe').split(',').map((d) => d.trim().toLowerCase()).filter(Boolean),
   // ID de cliente OAuth de Google Cloud; sin él no se muestra "Iniciar sesión con Google"
   googleClientId: env.GOOGLE_CLIENT_ID || '',

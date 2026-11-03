@@ -14,6 +14,7 @@ const { pool, query } = require('../src/db');
 const { migrar } = require('../src/scripts/migrate');
 const { seed } = require('../src/scripts/seed');
 const google = require('../src/lib/google');
+const config = require('../src/config');
 
 const app = crearApp();
 let firmar;
@@ -45,8 +46,10 @@ test('CP-38 Reporte por QR: el docente reporta con su Google, sin cuenta, y no s
 
   const reportar = (cred, datos = {}) => request(app).post(`/api/publico/equipos/${e.qr_token}/reportes`)
     .send({ credential: cred, descripcion: 'No enciende, tengo clase', cuando: 'AHORA', a_quien: 'TODOS', ...datos });
-  // cuenta de fuera del colegio: no
+  // con QR_SOLO_INSTITUCIONAL=true, una cuenta de fuera del dominio no puede reportar
+  config.qrSoloInstitucional = true;
   assert.equal((await reportar(firmar('alguien@gmail.com'))).status, 403);
+  config.qrSoloInstitucional = false;
   // faltan datos
   assert.equal((await reportar(firmar('ana.rojas@colegio.edu.pe'), { descripcion: '' })).status, 400);
 
@@ -69,6 +72,9 @@ test('CP-38 Reporte por QR: el docente reporta con su Google, sin cuenta, y no s
   assert.equal(otra.body.repetido, true);
   assert.equal(otra.body.numero, r.body.numero);
   assert.equal((await request(app).get(`/api/publico/equipos/${e.qr_token}`)).body.reportes_abiertos >= 1, true);
+  // por defecto también vale un correo personal (los equipos están dentro del colegio)
+  const personal = await reportar(firmar('profe.ana@gmail.com'));
+  assert.equal(personal.status, 201);
   const { rows: [{ n }] } = await query('SELECT count(*)::int AS n FROM operaciones_sin_bitacora');
   assert.equal(n, 0);
 });
