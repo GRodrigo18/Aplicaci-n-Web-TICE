@@ -11,7 +11,7 @@ docker compose exec api node src/scripts/crear-director.js "Nombre del Director"
 ```
 
 - Sistema: `http://<servidor>:8080` o `https://<servidor>:8443`. La cámara del celular solo lee QR con **HTTPS**.
-  Si no se monta un certificado propio en el volumen `certificados` (`tls.crt` y `tls.key`), Nginx genera uno autofirmado
+  Si la carpeta `certs/` no tiene un certificado propio (`tls.crt` y `tls.key`), Nginx genera uno autofirmado
   y el navegador pedirá aceptarlo la primera vez.
 - Datos de demostración (opcional, solo en una base vacía): `docker compose exec api npm run seed`.
   Crea 5 sedes, un TICE por sede, 92 equipos, 6 tickets y 3 correos. Contraseña de todas las cuentas: `Tice2026!`
