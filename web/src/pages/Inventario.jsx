@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, ArrowDown, ArrowUp, CheckCircle2, Download, FileSpreadsheet, Plus, Printer, ScanLine, Search, Upload, X } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowUp, CalendarClock, CheckCircle2, Download, FileSpreadsheet, MapPin, Plus, Printer, ScanLine, Search, Tag, Upload, X } from 'lucide-react';
 import { api, descargar, qs, subirArchivo } from '../api.js';
 import { useSesion } from '../sesion.jsx';
 import { Aviso, Campo, IconoTipo, Modal, Vacio, hace, insigniaEquipo } from '../components/ui.jsx';
@@ -113,6 +113,7 @@ export function imprimirEtiquetas(equipos) {
   window.open('/etiquetas', '_blank');
 }
 
+const PUNTO_ESTADO = { OPERATIVO: 'bg-emerald-500', MANTENIMIENTO: 'bg-amber-500', AVERIADO: 'bg-red-500', OBSOLETO: 'bg-orange-400', BAJA: 'bg-slate-400' };
 const ESTADOS = [['OPERATIVO', 'Operativo'], ['MANTENIMIENTO', 'En mantenimiento'], ['AVERIADO', 'Averiado'], ['OBSOLETO', 'Obsoleto'], ['BAJA', 'De baja']];
 
 // Importar el inventario desde el Excel de la sede: primero muestra qué hará, luego lo guarda
@@ -276,34 +277,59 @@ export default function Inventario() {
         <Search size={16} />{verFiltros ? 'Ocultar filtros' : `Filtros${hayFiltros ? ' (activos)' : ''}`}
       </button>
 
-      <div className={`tarjeta mt-5 space-y-4 p-5 ${verFiltros ? '' : 'hidden sm:block'}`}>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="w-16 text-sm text-slate-500">Tipo</span>
-          {tiposPresentes.map((t) => (
-            <button key={t.id} className={`chip ${String(filtros.tipo_id) === String(t.id) ? 'chip-activo' : ''}`} onClick={() => set('tipo_id', String(t.id))}>
-              <IconoTipo tipo={t.nombre} size={15} />{t.nombre}
-            </button>
-          ))}
+      <div className={`tarjeta mt-5 p-5 sm:p-6 ${verFiltros ? '' : 'hidden sm:block'}`}>
+        <div className="space-y-4">
+          <div className="fila-filtro">
+            <span className="titulo-filtro">Tipo</span>
+            <div className="flex flex-wrap gap-2">
+              {tiposPresentes.map((t) => (
+                <button key={t.id} className={`chip ${String(filtros.tipo_id) === String(t.id) ? 'chip-activo' : ''}`} onClick={() => set('tipo_id', String(t.id))}>
+                  <IconoTipo tipo={t.nombre} size={15} />{t.nombre}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="fila-filtro">
+            <span className="titulo-filtro">Estado</span>
+            <div className="flex flex-wrap gap-2">
+              {ESTADOS.map(([v, t]) => (
+                <button key={v} className={`chip ${filtros.estado === v ? 'chip-activo' : ''}`} onClick={() => set('estado', v)}>
+                  <span className={`h-2 w-2 rounded-full ${filtros.estado === v ? 'bg-white' : PUNTO_ESTADO[v]}`} />{t}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="fila-filtro">
+            <span className="titulo-filtro">Propiedad</span>
+            <div className="flex flex-wrap gap-2">
+              {[['PROPIO', 'Propio'], ['ALQUILADO', 'Alquilado']].map(([v, t]) => <button key={v} className={`chip ${filtros.propiedad === v ? 'chip-activo' : ''}`} onClick={() => set('propiedad', v)}>{t}</button>)}
+            </div>
+          </div>
+          <div className="fila-filtro">
+            <span className="titulo-filtro">Revisar</span>
+            <div className="flex flex-wrap gap-2">
+              <button className={`chip ${filtros.sin_verificar ? 'chip-activo' : ''}`} onClick={() => set('sin_verificar', 'true')}><ScanLine size={15} />Nunca verificados con QR</button>
+              <button className={`chip ${filtros.por_vencer ? 'chip-activo' : ''}`} onClick={() => set('por_vencer', 'true')}><CalendarClock size={15} />Contrato por vencer (60 días)</button>
+              <button className={`chip ${filtros.baja_pendiente ? 'chip-activo' : ''}`} onClick={() => set('baja_pendiente', 'true')}><AlertTriangle size={15} />Baja por aprobar</button>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="w-16 text-sm text-slate-500">Estado</span>
-          {ESTADOS.map(([v, t]) => <button key={v} className={`chip ${filtros.estado === v ? 'chip-activo' : ''}`} onClick={() => set('estado', v)}>{t}</button>)}
-          <button className={`chip ${filtros.sin_verificar ? 'chip-activo' : ''}`} onClick={() => set('sin_verificar', 'true')}>Nunca verificados con QR</button>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="w-16 text-sm text-slate-500">Propiedad</span>
-          {[['PROPIO', 'Propio'], ['ALQUILADO', 'Alquilado']].map(([v, t]) => <button key={v} className={`chip ${filtros.propiedad === v ? 'chip-activo' : ''}`} onClick={() => set('propiedad', v)}>{t}</button>)}
-          <button className={`chip ${filtros.por_vencer ? 'chip-activo' : ''}`} onClick={() => set('por_vencer', 'true')}>Contrato por vencer (60 días)</button>
-          <button className={`chip ${filtros.baja_pendiente ? 'chip-activo' : ''}`} onClick={() => set('baja_pendiente', 'true')}>Baja por aprobar</button>
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto]">
-          <select className="entrada" value={filtros.marca} onChange={(e) => setFiltros({ ...filtros, marca: e.target.value })}>
-            <option value="">Todas las marcas</option>{marcas.map((m) => <option key={m}>{m}</option>)}
-          </select>
-          <select className="entrada" value={filtros.ubicacion} onChange={(e) => setFiltros({ ...filtros, ubicacion: e.target.value })}>
-            <option value="">Todas las ubicaciones</option>{ubicaciones.map((m) => <option key={m}>{m}</option>)}
-          </select>
-          <button className="btn px-3 text-slate-400 hover:text-slate-700 disabled:opacity-40" disabled={!hayFiltros}
+        <div className="mt-5 grid grid-cols-1 gap-3 border-t border-slate-100 pt-5 sm:grid-cols-[1fr_1fr_auto]">
+          <label className="relative">
+            <span className="sr-only">Marca</span>
+            <Tag size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <select className="entrada pl-10" value={filtros.marca} onChange={(e) => setFiltros({ ...filtros, marca: e.target.value })}>
+              <option value="">Todas las marcas</option>{marcas.map((m) => <option key={m}>{m}</option>)}
+            </select>
+          </label>
+          <label className="relative">
+            <span className="sr-only">Ubicación</span>
+            <MapPin size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <select className="entrada pl-10" value={filtros.ubicacion} onChange={(e) => setFiltros({ ...filtros, ubicacion: e.target.value })}>
+              <option value="">Todas las ubicaciones</option>{ubicaciones.map((m) => <option key={m}>{m}</option>)}
+            </select>
+          </label>
+          <button className="btn-secundario" disabled={!hayFiltros}
             onClick={() => setFiltros({ q: '', tipo_id: '', estado: '', ubicacion: '', marca: '', sin_verificar: '', propiedad: '', por_vencer: '', baja_pendiente: '' })}><X size={16} />Limpiar filtros</button>
         </div>
       </div>
