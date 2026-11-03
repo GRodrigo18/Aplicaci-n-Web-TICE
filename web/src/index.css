@@ -4,46 +4,99 @@
 
 @layer base {
   body { @apply bg-fondo font-sans text-slate-800 antialiased; }
-  .dark body { background: #0b1020; color: #e2e8f0; }
+  .dark body { background: #0b1120; color: #e8edf5; }
 }
 
 @layer components {
   .btn { @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50; }
   .btn-primario { @apply btn bg-marca-500 text-white shadow-brillo hover:bg-marca-600; }
-  .btn-secundario { @apply btn border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50; }
+  .btn-secundario { @apply btn border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-[#24314a] dark:bg-[#111a2e] dark:text-[#d3dbe7] dark:hover:border-[#2f3d5a] dark:hover:bg-[#18233b]; }
   .btn-peligro { @apply btn bg-red-600 text-white hover:bg-red-700; }
-  .btn-texto-peligro { @apply btn px-2 text-red-600 hover:bg-red-50; }
-  .entrada { @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 transition focus:border-marca-400 focus:outline-none focus:ring-4 focus:ring-marca-100; }
-  .etiqueta { @apply mb-1.5 block text-[13px] font-medium text-slate-600; }
-  .tarjeta { @apply rounded-2xl border border-slate-200/80 bg-white shadow-suave; }
-  .chip { @apply inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-medium text-slate-600 transition hover:border-slate-300; }
-  .chip-activo { @apply border-marca-500 bg-marca-500 text-white hover:border-marca-500; }
+  .btn-texto-peligro { @apply btn px-2 text-red-600 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-500/10; }
+  .entrada { @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 transition focus:border-marca-400 focus:outline-none focus:ring-4 focus:ring-marca-100 dark:border-[#24314a] dark:bg-[#0e1628] dark:text-[#e8edf5] dark:placeholder:text-[#6b7891] dark:focus:border-marca-400 dark:focus:ring-marca-500/25; }
+  .etiqueta { @apply mb-1.5 block text-[13px] font-medium text-slate-600 dark:text-[#b4c0d3]; }
+  .tarjeta { @apply rounded-2xl border border-slate-200/80 bg-white shadow-suave dark:border-[#1f2a40] dark:bg-[#111a2e] dark:shadow-none; }
+  .chip { @apply inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 text-[13px] font-medium text-slate-600 transition hover:border-marca-300 hover:text-marca-600 dark:border-[#24314a] dark:bg-[#0e1628] dark:text-[#b4c0d3] dark:hover:border-marca-400/60 dark:hover:text-[#e8edf5]; }
+  .chip-activo { @apply border-marca-500 bg-marca-500 text-white shadow-sm hover:border-marca-500 hover:text-white dark:border-marca-500 dark:bg-marca-500 dark:text-white dark:hover:text-white; }
   .tabla { @apply w-full text-left text-sm; }
-  .tabla th { @apply px-5 py-3.5 text-[13px] font-medium text-slate-500; }
-  .tabla td { @apply border-t border-slate-100 px-5 py-3.5 align-middle; }
-  .titulo-tarjeta { @apply text-[15px] font-bold text-slate-800; }
-  .sub-tarjeta { @apply text-xs text-slate-500; }
-  .icono-tarjeta { @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-marca-500; }
+  .tabla th { @apply px-5 py-3.5 text-[13px] font-medium text-slate-500 dark:text-[#8b98ad]; }
+  .tabla td { @apply border-t border-slate-100 px-5 py-3.5 align-middle dark:border-[#1f2a40]; }
+  .titulo-tarjeta { @apply text-[15px] font-bold text-slate-800 dark:text-[#e8edf5]; }
+  .sub-tarjeta { @apply text-xs text-slate-500 dark:text-[#8b98ad]; }
+  /* filtros: etiqueta fija a la izquierda y opciones alineadas en una misma columna */
+  .fila-filtro { @apply grid items-start gap-2 sm:grid-cols-[112px_1fr] sm:gap-4; }
+  .titulo-filtro { @apply text-[11px] font-semibold uppercase tracking-wider text-slate-400 sm:pt-2 dark:text-[#6b7891]; }
+  .icono-tarjeta { @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-marca-500 dark:border-[#24314a] dark:bg-[#0e1628] dark:text-marca-400; }
 }
 
-/* Modo oscuro: las superficies y los textos comunes se reasignan en un solo lugar */
-.dark .bg-white { background-color: #121933; }
-.dark .bg-fondo, .dark .bg-slate-50 { background-color: #0f1530; }
-.dark .bg-slate-100 { background-color: #1a2242; }
-.dark .hover\:bg-slate-50:hover, .dark .hover\:bg-slate-100:hover { background-color: #1a2242; }
-.dark .border-slate-100, .dark .border-slate-200, .dark .border-slate-200\/80, .dark .border-slate-300 { border-color: rgba(255,255,255,.08); }
-.dark .divide-slate-100 > * + * { border-color: rgba(255,255,255,.06); }
-.dark .text-slate-900, .dark .text-slate-800 { color: #f1f5f9; }
-.dark .text-slate-700 { color: #e2e8f0; }
-.dark .text-slate-600 { color: #cbd5e1; }
-.dark .text-slate-500 { color: #94a3b8; }
-.dark .entrada { background-color: #0f1530; color: #f1f5f9; }
-.dark .focus\:ring-marca-100:focus { --tw-ring-color: rgba(99,102,241,.25); }
-.dark .bg-marca-50 { background-color: rgba(99,102,241,.14); }
-.dark .bg-emerald-50 { background-color: rgba(16,185,129,.12); }
-.dark .bg-amber-50 { background-color: rgba(245,158,11,.12); }
-.dark .bg-red-50 { background-color: rgba(239,68,68,.12); }
-.dark .bg-blue-50 { background-color: rgba(59,130,246,.12); }
+/* ===== Modo oscuro =====
+   Una sola paleta azul pizarra para todo el sistema. Las clases claras que usan las páginas
+   se reasignan aquí, así cada pantalla queda con los mismos tonos sin tocar cada componente.
+   Superficies: fondo #0b1120 · tarjeta #111a2e · hundido #0e1628 · realce #18233b
+   Bordes: #1f2a40 (suave) y #2a3752 (fuerte) · Textos: #e8edf5 → #6b7891 */
+.dark { color-scheme: dark; }
+
+/* superficies */
+.dark .bg-white, .dark .bg-white\/80 { background-color: #111a2e; }
+.dark .bg-fondo, .dark .bg-slate-50, .dark .bg-marca-50\/40 { background-color: #0e1628; }
+.dark .bg-fondo\/80 { background-color: rgba(11,17,32,.82); }
+.dark .bg-slate-100 { background-color: #18233b; }
+.dark .bg-slate-200 { background-color: #22304a; }
+.dark .hover\:bg-slate-50:hover, .dark .hover\:bg-slate-100:hover { background-color: #18233b; }
+.dark .hover\:bg-slate-200:hover { background-color: #22304a; }
+.dark .bg-slate-900\/40, .dark .bg-slate-900\/30 { background-color: rgba(2,6,16,.65); }
+.dark .before\:bg-slate-200::before { background-color: #2a3752; }
+
+/* bordes y divisores */
+.dark .border-slate-100, .dark .border-slate-200, .dark .border-slate-200\/80 { border-color: #1f2a40; }
+.dark .border-slate-300, .dark .hover\:border-slate-300:hover { border-color: #2a3752; }
+.dark .divide-slate-100 > * + * { border-color: #1f2a40; }
+.dark .ring-slate-200 { --tw-ring-color: #2a3752; }
+
+/* textos */
+.dark .text-slate-900, .dark .text-slate-800, .dark .hover\:text-slate-900:hover, .dark .hover\:text-slate-800:hover { color: #e8edf5; }
+.dark .text-slate-700, .dark .hover\:text-slate-700:hover { color: #d3dbe7; }
+.dark .text-slate-600, .dark .hover\:text-slate-600:hover { color: #b4c0d3; }
+.dark .text-slate-500 { color: #8b98ad; }
+.dark .text-slate-400 { color: #6b7891; }
+.dark .text-slate-300 { color: #4b5873; }
+.dark .text-slate-100 { color: #1f2a40; } /* pistas de anillos y gráficos */
+
+/* marca (índigo): en oscuro se aclara el texto para que se lea */
+.dark .bg-marca-50 { background-color: rgba(99,102,241,.16); }
+.dark .bg-marca-100 { background-color: rgba(99,102,241,.24); }
+.dark .text-marca-600, .dark .text-marca-700 { color: #a5b4fc; }
+.dark .text-marca-500 { color: #818cf8; }
+.dark .border-marca-300 { border-color: rgba(129,140,248,.5); }
+.dark .focus\:ring-marca-100:focus { --tw-ring-color: rgba(99,102,241,.28); }
+
+/* estados (verde, ámbar, rojo, azul, naranja, cian): fondo translúcido, texto claro y borde suave */
+.dark .bg-emerald-50 { background-color: rgba(16,185,129,.13); }
+.dark .bg-amber-50 { background-color: rgba(245,158,11,.13); }
+.dark .bg-amber-100 { background-color: rgba(245,158,11,.2); }
+.dark .bg-red-50, .dark .hover\:bg-red-50:hover { background-color: rgba(239,68,68,.13); }
+.dark .bg-blue-50 { background-color: rgba(59,130,246,.13); }
+.dark .bg-orange-50 { background-color: rgba(249,115,22,.13); }
+.dark .bg-cyan-50 { background-color: rgba(6,182,212,.13); }
+.dark .text-emerald-600, .dark .text-emerald-700 { color: #6ee7b7; }
+.dark .text-amber-600, .dark .text-amber-700, .dark .text-amber-800, .dark .text-amber-900 { color: #fcd34d; }
+.dark .text-red-600, .dark .text-red-700, .dark .text-red-800 { color: #fca5a5; }
+.dark .text-blue-700 { color: #93c5fd; }
+.dark .text-orange-700 { color: #fdba74; }
+.dark .text-cyan-700 { color: #67e8f9; }
+.dark .ring-emerald-200 { --tw-ring-color: rgba(16,185,129,.3); }
+.dark .ring-amber-200 { --tw-ring-color: rgba(245,158,11,.3); }
+.dark .ring-red-200 { --tw-ring-color: rgba(239,68,68,.3); }
+.dark .ring-blue-200 { --tw-ring-color: rgba(59,130,246,.3); }
+.dark .ring-orange-200 { --tw-ring-color: rgba(249,115,22,.3); }
+.dark .border-amber-200 { border-color: rgba(245,158,11,.3); }
+.dark .border-red-200 { border-color: rgba(239,68,68,.3); }
+
+/* destellos decorativos de los encabezados: en oscuro, un brillo índigo tenue en lugar del blanco */
+.dark .from-marca-100\/60, .dark .from-marca-200\/40 { --tw-gradient-from: rgba(99,102,241,.16) var(--tw-gradient-from-position); --tw-gradient-to: rgba(99,102,241,0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+.dark .via-cyan-100\/40 { --tw-gradient-to: rgba(6,182,212,0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), rgba(6,182,212,.08) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+.dark .to-pink-100\/50, .dark .to-pink-100\/40 { --tw-gradient-to: rgba(236,72,153,.08) var(--tw-gradient-to-position); }
+
 .dark .shadow-suave { box-shadow: none; }
 
 /* Fondo del escáner y del panel de inicio de sesión */
