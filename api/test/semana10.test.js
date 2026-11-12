@@ -167,6 +167,13 @@ test('CP-26 Consulta SQL de solo lectura en el visor de la base de datos', async
   const muchas = await sql('SELECT generate_series(1, 2000) AS n');
   assert.equal(muchas.body.filas.length, 500);
   assert.equal(muchas.body.truncado, true);
+  // los hashes no salen ni nombrando la columna ni dentro de un JSON
+  assert.equal((await sql('SELECT md5(password_hash) FROM usuarios')).status, 403);
+  const json = await sql('SELECT row_to_json(u) AS fila FROM usuarios u');
+  assert.equal(json.status, 200);
+  assert.ok(json.body.filas.every((f) => f[0] === '••••••'), 'row_to_json no muestra los hashes');
+  const { rows: [aud] } = await query(`SELECT detalle FROM logs_auditoria WHERE accion = 'CONSULTA_SQL' ORDER BY secuencia DESC LIMIT 1`);
+  assert.ok(aud, 'cada consulta queda en la bitácora');
 });
 
 test('CP-27 Roles: el Jefe de TI consulta y gestiona; el TICE registra el inventario', async () => {
