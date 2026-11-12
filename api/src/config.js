@@ -36,6 +36,12 @@ const config = {
   // Con GOOGLE_CLIENT_ID se entra solo con Google (botón "Ingresar con Google"). SOLO_GOOGLE=false vuelve a aceptar
   // también la contraseña. Sin GOOGLE_CLIENT_ID se sigue aceptando la contraseña para no dejar a nadie fuera.
   soloGoogle: env.SOLO_GOOGLE !== 'false',
+  // Límite de peticiones por IP (RATE_LIMIT=off lo desactiva; las pruebas automáticas de Node ya lo omiten)
+  rateLimit: {
+    activo: env.RATE_LIMIT !== 'off' && !env.NODE_TEST_CONTEXT,
+    autenticacionPorMinuto: Number(env.RATE_AUTH_POR_MINUTO || 20),
+    apiPor15Min: Number(env.RATE_API_POR_15_MIN || 600),
+  },
 };
 
 if (!config.jwtSecret) {
