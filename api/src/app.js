@@ -1,7 +1,7 @@
 const path = require('path');
 const express = require('express');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const config = require('./config');
 const { autenticar, soloDirector } = require('./lib/auth');
 const { manejadorErrores } = require('./lib/errores');
@@ -37,8 +37,12 @@ function crearApp() {
 
   // Límite de peticiones por IP: más estricto en el ingreso y en el reporte público por QR (crean registros y verifican firmas)
   if (config.rateLimit.activo) {
+    // En Render el tráfico pasa por Cloudflare: req.ip sería la IP (cambiante) del borde de Cloudflare, no la del cliente.
+    // Cloudflare envía la IP real en CF-Connecting-IP; sin esa cabecera (servidor propio) se usa req.ip.
+    const ipCliente = (req) => ipKeyGenerator(String(req.headers['cf-connecting-ip'] || req.ip || ''));
     const limitar = (windowMs, limit, mensaje) => rateLimit({
       windowMs, limit, standardHeaders: 'draft-7', legacyHeaders: false,
+      keyGenerator: ipCliente,
       message: { error: mensaje },
     });
     const masivo = 'Demasiadas solicitudes. Espere un momento e intente nuevamente';
