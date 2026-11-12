@@ -23,8 +23,6 @@ services:
         sync: false
       - key: JWT_SECRET
         generateValue: true
-      - key: DATOS_DEMO
-        value: "true"
       # Cuentas reales (README → "Arrancar directamente con las cuentas reales"). Con CORREO_JEFE y CORREO_TICE
       # puestos no se usa la demostración. No se escriben aquí porque el repositorio es público.
       - key: GOOGLE_CLIENT_ID
