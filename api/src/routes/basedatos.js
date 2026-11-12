@@ -38,9 +38,14 @@ router.get('/', h(async (_req, res) => {
 // no deja encadenar con ";"), 5 s como máximo y hasta 500 filas. Las columnas con hashes de contraseña se ocultan.
 // La conexión se descarta al terminar para no dejar sentencias preparadas ni estado de sesión en el pool.
 const MAX_FILAS = 500;
-const HASH = /^\$2[aby]\$\d{2}\$/;
+// Un hash bcrypt en cualquier parte del valor (texto, recortado con substr o dentro de un JSON de row_to_json)
+const HASH = /\$2[aby]\$\d{2}\$/;
+const contieneHash = (v) => v !== null && v !== undefined && HASH.test(typeof v === 'string' ? v : JSON.stringify(v));
 router.post('/consulta', h(async (req, res) => {
   const sql = texto(req.body?.sql, 'sql', { requerido: true, max: 5000 });
+  // No se permite nombrar la columna de hashes ni transformarla (md5, encode, etc.)
+  if (/password_hash/i.test(sql)) throw new HttpError(403, 'No se pueden consultar las contraseñas');
+  await registrar(pool, req.usuario, { entidad: 'sistema', accion: 'CONSULTA_SQL', detalle: { sql: sql.slice(0, 500) } });
   const c = await pool.connect();
   try {
     await c.query('BEGIN READ ONLY');
@@ -55,7 +60,7 @@ router.post('/consulta', h(async (req, res) => {
     const ms = Date.now() - inicio;
     const campos = (r.fields || []).map((f) => f.name);
     let filas = r.rows || [];
-    const ocultar = campos.map((n, i) => n === 'password_hash' || filas.some((f) => typeof f[i] === 'string' && HASH.test(f[i])));
+    const ocultar = campos.map((n, i) => n === 'password_hash' || filas.some((f) => contieneHash(f[i])));
     filas = filas.slice(0, MAX_FILAS).map((f) => f.map((v, i) => (ocultar[i] ? '••••••' : v)));
     res.json({ columnas: campos, filas, truncado: (r.rows || []).length > MAX_FILAS, comando: r.command, ms });
   } finally {
@@ -79,8 +84,12 @@ router.post('/datos-reales', h(async (req, res) => {
 router.get('/respaldo', h(async (req, res) => {
   let sql;
   try {
-    const { stdout } = await execFileP('pg_dump', ['--schema=public', '--no-owner', '--no-privileges', '--encoding=UTF8', config.databaseUrl],
-      { maxBuffer: 512 * 1024 * 1024, timeout: 120000 });
+    // La clave de la base va en PGPASSWORD y no en la línea de comandos (visible en la lista de procesos)
+    const url = new URL(config.databaseUrl);
+    const clave = decodeURIComponent(url.password);
+    url.password = '';
+    const { stdout } = await execFileP('pg_dump', ['--schema=public', '--no-owner', '--no-privileges', '--encoding=UTF8', url.toString()],
+      { maxBuffer: 512 * 1024 * 1024, timeout: 120000, env: { ...process.env, PGPASSWORD: clave } });
     // El esquema public ya existe en la base de destino (y en Supabase no se puede comentar): se omiten esas dos líneas
     sql = stdout.replace(/^CREATE SCHEMA public;\n/m, '').replace(/^COMMENT ON SCHEMA public IS .*\n/m, '');
   } catch (err) {
