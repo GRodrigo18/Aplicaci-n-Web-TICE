@@ -1,6 +1,7 @@
 const path = require('path');
 const express = require('express');
 const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const config = require('./config');
 const { autenticar, soloDirector } = require('./lib/auth');
 const { manejadorErrores } = require('./lib/errores');
@@ -9,13 +10,43 @@ const correos = require('./routes/correos');
 function crearApp() {
   const app = express();
   app.set('trust proxy', 1);
-  // con la web servida aquí, la CSP por defecto de helmet bloquearía la cámara y los estilos de la SPA (Nginx no la usa)
   // "same-origin-allow-popups" deja abrir la ventana de "Iniciar sesión con Google"
+  // CSP a medida (segunda defensa ante XSS, porque la sesión vive en localStorage): solo el propio sitio y Google;
+  // la cámara del lector QR necesita blob: y los estilos de Tailwind/Google, 'unsafe-inline'
   app.use(helmet({
     crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
-    ...(config.webDist ? { contentSecurityPolicy: false } : {}),
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", 'https://accounts.google.com'],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://accounts.google.com'],
+        imgSrc: ["'self'", 'data:', 'blob:'],
+        mediaSrc: ["'self'", 'blob:'],
+        workerSrc: ["'self'", 'blob:'],
+        connectSrc: ["'self'", 'https://accounts.google.com'],
+        frameSrc: ['https://accounts.google.com'],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        frameAncestors: ["'self'"],
+      },
+    },
   }));
   app.use(express.json({ limit: '1mb' }));
+
+  // Límite de peticiones por IP: más estricto en el ingreso y en el reporte público por QR (crean registros y verifican firmas)
+  if (config.rateLimit.activo) {
+    const limitar = (windowMs, limit, mensaje) => rateLimit({
+      windowMs, limit, standardHeaders: 'draft-7', legacyHeaders: false,
+      message: { error: mensaje },
+    });
+    const masivo = 'Demasiadas solicitudes. Espere un momento e intente nuevamente';
+    app.use('/api/auth', limitar(60 * 1000, config.rateLimit.autenticacionPorMinuto, masivo));
+    app.use('/api/publico', limitar(60 * 1000, config.rateLimit.autenticacionPorMinuto, masivo));
+    app.use('/api/correos/entrante', limitar(60 * 1000, config.rateLimit.autenticacionPorMinuto, masivo));
+    app.use('/api', limitar(15 * 60 * 1000, config.rateLimit.apiPor15Min, masivo));
+  }
 
   app.get('/api/salud', (_req, res) => res.json({ ok: true }));
   app.use('/api/auth', require('./routes/auth'));
