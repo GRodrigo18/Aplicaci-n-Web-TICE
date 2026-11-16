@@ -1,11 +1,11 @@
 const path = require('path');
 const express = require('express');
 const helmet = require('helmet');
-const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const config = require('./config');
 const { autenticar, soloDirector } = require('./lib/auth');
 const { manejadorErrores } = require('./lib/errores');
 const correos = require('./routes/correos');
+const { aplicarLimites, limiteUsuario } = require('./lib/limites');
 
 function crearApp() {
   const app = express();
@@ -35,24 +35,11 @@ function crearApp() {
   }));
   app.use(express.json({ limit: '1mb' }));
 
-  // Límite de peticiones por IP: más estricto en el ingreso y en el reporte público por QR (crean registros y verifican firmas)
-  if (config.rateLimit.activo) {
-    // En Render el tráfico pasa por Cloudflare: req.ip sería la IP (cambiante) del borde de Cloudflare, no la del cliente.
-    // Cloudflare envía la IP real en CF-Connecting-IP; sin esa cabecera (servidor propio) se usa req.ip.
-    const ipCliente = (req) => ipKeyGenerator(String(req.headers['cf-connecting-ip'] || req.ip || ''));
-    const limitar = (windowMs, limit, mensaje) => rateLimit({
-      windowMs, limit, standardHeaders: 'draft-7', legacyHeaders: false,
-      keyGenerator: ipCliente,
-      message: { error: mensaje },
-    });
-    const masivo = 'Demasiadas solicitudes. Espere un momento e intente nuevamente';
-    app.use('/api/auth', limitar(60 * 1000, config.rateLimit.autenticacionPorMinuto, masivo));
-    app.use('/api/publico', limitar(60 * 1000, config.rateLimit.autenticacionPorMinuto, masivo));
-    app.use('/api/correos/entrante', limitar(60 * 1000, config.rateLimit.autenticacionPorMinuto, masivo));
-    app.use('/api', limitar(15 * 60 * 1000, config.rateLimit.apiPor15Min, masivo));
-  }
+  // Límite de peticiones. El colegio sale a internet con UNA sola IP (todos sus equipos detrás del mismo router),
+  // así que sin sesión se cuenta por IP y con sesión por usuario (limiteUsuario, después de autenticar).
+  if (config.rateLimit.activo) aplicarLimites(app);
 
-  app.get('/api/salud', (_req, res) => res.json({ ok: true }));
+  app.use('/api/salud', require('./routes/salud'));
   app.use('/api/auth', require('./routes/auth'));
   app.post('/api/correos/entrante', correos.rutaEntrante(config));
   app.use('/api/correos/salida', correos.rutasSalida(config));
@@ -60,6 +47,7 @@ function crearApp() {
   app.use('/api/publico', require('./routes/publico'));
 
   app.use('/api', autenticar);
+  app.use('/api', limiteUsuario());
   app.use('/api', require('./routes/admin'));
   app.use('/api/catalogos', require('./routes/catalogos'));
   app.use('/api/equipos', require('./routes/equipos'));

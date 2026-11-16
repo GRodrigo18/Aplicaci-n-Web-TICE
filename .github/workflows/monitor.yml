@@ -1,0 +1,29 @@
+# Vigilancia: cada 10 minutos en horario escolar (lunes a sábado, 6:00 a 19:00 de Lima) comprueba que el sistema
+# responda. Además lo mantiene despierto en ese horario aunque el script de Gmail esté detenido.
+# Si falla, GitHub envía un correo (Settings → Notifications → Actions) a quien activó el horario.
+name: Monitor
+
+on:
+  schedule:
+    - cron: '*/10 11-23 * * 1-6'   # UTC; Lima = UTC-5
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: monitor
+  cancel-in-progress: false
+
+jobs:
+  vigilar:
+    name: El sistema responde
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+      - env:
+          URL_SISTEMA: ${{ vars.URL_SISTEMA || 'https://sistema-tice.onrender.com' }}
+        run: scripts/prueba-humo.sh "$URL_SISTEMA"

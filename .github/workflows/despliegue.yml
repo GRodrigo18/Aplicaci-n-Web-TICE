@@ -1,0 +1,28 @@
+# Prueba de humo después de cada despliegue: al fusionar en main, espera a que Render publique ese commit
+# (lo informa /api/salud → version) y comprueba la página, la API, la base y el ingreso con Google.
+# Si falla, GitHub envía un correo al autor del commit y el commit queda con una ✘ roja.
+name: Despliegue
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: despliegue
+  cancel-in-progress: true
+
+jobs:
+  humo:
+    name: Prueba de humo en producción
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Esperar la versión nueva y probar
+        env:
+          URL_SISTEMA: ${{ vars.URL_SISTEMA || 'https://sistema-tice.onrender.com' }}
+        run: scripts/prueba-humo.sh "$URL_SISTEMA" "${{ github.event_name == 'push' && github.sha || '' }}"

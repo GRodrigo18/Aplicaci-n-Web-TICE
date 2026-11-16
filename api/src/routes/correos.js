@@ -127,8 +127,26 @@ router.get('/', h(async (req, res) => {
     `SELECT c.*, s.nombre AS sede_nombre, i.numero AS ticket_numero, i.id AS ticket_id
        FROM correos_entrantes c JOIN sedes s ON s.id = c.sede_id LEFT JOIN incidencias i ON i.correo_id = c.id
       ${cond.length ? 'WHERE ' + cond.join(' AND ') : ''} ORDER BY c.recibido_en DESC LIMIT 300`, params);
+  // Propuesta de ticket de cada correo por atender, calculada aquí en una sola pasada. Antes la pantalla pedía
+  // /correos/:id/propuesta por cada correo cada 30 s y, con un buzón lleno, agotaba el límite de solicitudes.
+  const equiposPorSede = new Map();
+  const porAtender = rows.filter((r) => r.estado === 'POR_ATENDER');
+  if (porAtender.length) {
+    const sedes = [...new Set(porAtender.map((r) => r.sede_id))];
+    const { rows: equipos } = await query(
+      `SELECT id, codigo, ubicacion, sede_id FROM equipos WHERE sede_id = ANY($1::int[]) AND estado <> 'BAJA'`, [sedes]);
+    for (const e of equipos) {
+      if (!equiposPorSede.has(e.sede_id)) equiposPorSede.set(e.sede_id, []);
+      equiposPorSede.get(e.sede_id).push({ id: e.id, codigo: e.codigo, ubicacion: e.ubicacion });
+    }
+  }
+  const propuestaDe = (r) => {
+    if (r.estado !== 'POR_ATENDER') return null;
+    const p = proponerTicket(r, equiposPorSede.get(r.sede_id) || []);
+    return { ...p, prioridad: prioridadItil(p.impacto, p.urgencia) };
+  };
   // remitentes fuera del dominio institucional: se muestran marcados para revisarlos antes de abrir un ticket
-  res.json(rows.map((r) => ({ ...r, externo: !dominiosCorreo.includes(dominioDe(r.remitente)) })));
+  res.json(rows.map((r) => ({ ...r, externo: !dominiosCorreo.includes(dominioDe(r.remitente)), propuesta: propuestaDe(r) })));
 }));
 
 // Registrar a mano un correo recibido (cuando el buzón aún no reenvía automáticamente)

@@ -8,6 +8,7 @@ import { useSesion } from './sesion.jsx';
 import { Avatar, IconoTipo, Insignia, SelectorSede } from './components/ui.jsx';
 import { Logo } from './components/Logo.jsx';
 import Falla from './components/Falla.jsx';
+import { SinConexion } from './components/Conexion.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Inventario from './pages/Inventario.jsx';
@@ -173,10 +174,11 @@ function Layout({ children }) {
 }
 
 export default function App() {
-  const { usuario, cargando, catalogos, esDirector } = useSesion();
+  const { usuario, cargando, sinConexion, catalogos, esDirector } = useSesion();
   // página pública, con o sin sesión (Google la pide para publicar el ingreso)
   if (window.location.pathname === '/privacidad') return <Privacidad />;
   if (cargando) return <div className="p-10 text-center text-slate-500">Cargando…</div>;
+  if (sinConexion) return <SinConexion mensaje={sinConexion} />;
   // el QR escaneado por alguien sin sesión (un docente) abre el reporte de fallas
   const qr = window.location.pathname.match(/^\/q\/([a-f0-9]{24})$/i);
   if (!usuario) return qr ? <ReporteQr token={qr[1]} /> : <Login />;

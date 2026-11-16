@@ -7,7 +7,17 @@ types.setTypeParser(20, (v) => (v === null ? null : Number(v)));
 // DATE como texto AAAA-MM-DD, sin conversión de zona horaria
 types.setTypeParser(1082, (v) => v);
 
-const pool = new Pool({ connectionString: config.databaseUrl, max: 10 });
+// Tiempos máximos para que una base caída (Supabase pausado, red) dé un error rápido en vez de colgar la petición,
+// y keepAlive para que el pooler no corte en silencio las conexiones inactivas
+const pool = new Pool({
+  connectionString: config.databaseUrl,
+  max: 10,
+  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 30000,
+  keepAlive: true,
+});
+// Si Supabase cierra una conexión inactiva, pg emite 'error' en el pool; sin este manejador el proceso se cae
+pool.on('error', (err) => console.error('Base de datos: se cerró una conexión inactiva:', err.message));
 
 async function query(text, params) {
   return pool.query(text, params);

@@ -35,4 +35,5 @@ El sistema queda en `http://<servidor>:8080`. Las pruebas se ejecutan con `cd ap
 
 - [Guía técnica](docs/guia-tecnica.md): instalación completa, configuración, correo, roles, indicadores y base de datos.
 - [Servidor y datos](docs/servidor-y-datos.md): comparación entre Render + Supabase y un servidor propio.
+- [Continuidad](docs/continuidad.md): qué hacer si el sistema se cae, pruebas de despliegue, monitor y respaldo automático.
 - [Script de Gmail](integraciones/gmail/README.md): conexión del buzón de la sede.
