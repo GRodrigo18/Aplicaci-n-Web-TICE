@@ -40,7 +40,10 @@ const config = {
   rateLimit: {
     activo: env.RATE_LIMIT === 'on' || (env.RATE_LIMIT !== 'off' && !env.NODE_TEST_CONTEXT),
     autenticacionPorMinuto: Number(env.RATE_AUTH_POR_MINUTO || 20),
+    // con sesión, por usuario (la Mesa de ayuda se actualiza sola cada 30 s)
     apiPor15Min: Number(env.RATE_API_POR_15_MIN || 1500),
+    // sin sesión, por IP
+    anonimoPor15Min: Number(env.RATE_ANONIMO_POR_15_MIN || 600),
   },
 };
 

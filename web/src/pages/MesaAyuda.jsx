@@ -506,10 +506,8 @@ function Correos({ alCambiar }) {
   const cargar = useCallback(() => api.get(`/correos${qs({ sede_id: sedeParam, estado })}`).then((l) => {
     setCorreos(l);
     setSel((s) => (l.some((c) => c.id === s) ? s : l[0]?.id || null));
-    if (estado === 'POR_ATENDER') {
-      Promise.all(l.map((c) => api.get(`/correos/${c.id}/propuesta`).then((r) => [c.id, r.propuesta]).catch(() => [c.id, null])))
-        .then((pares) => setPropuestas(Object.fromEntries(pares)));
-    }
+    // la lista ya trae la propuesta de cada correo por atender (una sola solicitud cada 30 s)
+    setPropuestas(Object.fromEntries(l.filter((c) => c.propuesta).map((c) => [c.id, c.propuesta])));
   }).catch(() => {}), [sedeParam, estado]); // si falla una actualización, se reintenta a los 30 s
   useEffect(() => { cargar(); const t = setInterval(cargar, 30000); return () => clearInterval(t); }, [cargar]);
   const hecho = (msg) => { setModal(null); setAviso(msg); cargar(); alCambiar(); };

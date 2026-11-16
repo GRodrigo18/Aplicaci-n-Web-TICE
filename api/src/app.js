@@ -5,7 +5,7 @@ const config = require('./config');
 const { autenticar, soloDirector } = require('./lib/auth');
 const { manejadorErrores } = require('./lib/errores');
 const correos = require('./routes/correos');
-const { aplicarLimites } = require('./lib/limites');
+const { aplicarLimites, limiteUsuario } = require('./lib/limites');
 
 function crearApp() {
   const app = express();
@@ -36,7 +36,7 @@ function crearApp() {
   app.use(express.json({ limit: '1mb' }));
 
   // Límite de peticiones. El colegio sale a internet con UNA sola IP (todos sus equipos detrás del mismo router),
-  // así que con sesión iniciada se cuenta por usuario y no por IP; sin sesión, por IP.
+  // así que sin sesión se cuenta por IP y con sesión por usuario (limiteUsuario, después de autenticar).
   if (config.rateLimit.activo) aplicarLimites(app);
 
   app.get('/api/salud', (_req, res) => res.json({ ok: true }));
@@ -47,6 +47,7 @@ function crearApp() {
   app.use('/api/publico', require('./routes/publico'));
 
   app.use('/api', autenticar);
+  app.use('/api', limiteUsuario());
   app.use('/api', require('./routes/admin'));
   app.use('/api/catalogos', require('./routes/catalogos'));
   app.use('/api/equipos', require('./routes/equipos'));

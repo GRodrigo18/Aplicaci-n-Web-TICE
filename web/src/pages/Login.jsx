@@ -64,7 +64,11 @@ export default function Login() {
   const cargarConfig = useCallback(() => {
     setEstadoConfig('cargando');
     api.get('/auth/config').then((c) => { setConfig(c); setEstadoConfig('lista'); })
-      .catch((err) => setEstadoConfig(err.message || 'No se pudo conectar con el servidor'));
+      .catch((err) => {
+        // un error que no es de la API (por ejemplo una página HTML de Render o Cloudflare) no se muestra tal cual
+        const m = String(err.message || '');
+        setEstadoConfig(m && m.length <= 200 && !m.trimStart().startsWith('<') ? m : 'No se pudo conectar con el sistema.');
+      });
   }, []);
   useEffect(() => { cargarConfig(); }, [cargarConfig]);
   const dominio = config.dominios[0] || 'nslm.edu.pe';
@@ -152,6 +156,7 @@ export default function Login() {
             <div className="mt-8 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
               {estadoConfig}
               <button type="button" className="mt-2 block font-semibold text-rose-800 underline" onClick={cargarConfig}>Reintentar</button>
+              {!respaldo && <button type="button" className="mt-1 block font-semibold text-rose-800 underline" onClick={() => setRespaldo(true)}>Ingreso de respaldo con contraseña</button>}
             </div>
           ) : (
             <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
