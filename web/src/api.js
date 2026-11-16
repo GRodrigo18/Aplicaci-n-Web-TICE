@@ -10,6 +10,10 @@ export function guardarToken(t) {
 
 let alExpirar = () => {};
 export const onSesionExpirada = (fn) => { alExpirar = fn; };
+// aviso global cuando el servidor no respondió (sin red, despertando o caído)
+let alCaer = () => {};
+export const onServicioCaido = (fn) => { alCaer = fn; };
+const CAIDO = [0, 502, 503, 504];
 
 export class ApiError extends Error {
   constructor(status, cuerpo) {
@@ -44,15 +48,16 @@ async function solicitud(metodo, ruta, cuerpo) {
       r = await conectar(`/api${ruta}`, opciones);
       if (metodo !== 'GET' || ![502, 503, 504].includes(r.status) || intento >= 3) break;
     } catch (err) {
-      if (metodo !== 'GET' || intento >= 3) throw err;
+      if (metodo !== 'GET' || intento >= 3) { alCaer(); throw err; }
     }
     await esperar(2000 * (intento + 1));
   }
   const tipo = r.headers.get('content-type') || '';
   const datos = tipo.includes('application/json') ? await r.json() : await r.text();
   if (!r.ok) {
+    if (CAIDO.includes(r.status)) alCaer();
     if (r.status === 401 && token && ruta !== '/auth/login') alExpirar();
-    if ([502, 503, 504].includes(r.status) && typeof datos === 'string') throw new ApiError(r.status, { error: 'El sistema se está reiniciando. Inténtalo de nuevo en un minuto.' });
+    if (CAIDO.includes(r.status) && typeof datos === 'string') throw new ApiError(r.status, { error: 'El sistema se está reiniciando. Inténtalo de nuevo en un minuto.' });
     throw new ApiError(r.status, typeof datos === 'string' ? { error: datos } : datos);
   }
   return datos;

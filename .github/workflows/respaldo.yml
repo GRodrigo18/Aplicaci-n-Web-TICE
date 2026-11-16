@@ -1,0 +1,66 @@
+# Respaldo diario de la base de Supabase (02:00 de Lima), cifrado y guardado 30 días como artefacto de GitHub.
+# El repositorio es PÚBLICO: el archivo se cifra con RESPALDO_CLAVE (AES-256) antes de subirlo, así que sin esa
+# clave nadie puede leerlo. Necesita dos secretos del repositorio (docs/continuidad.md → "Respaldo automático"):
+#   SUPABASE_DB_URL  cadena del Session pooler de Supabase (la misma DATABASE_URL de Render)
+#   RESPALDO_CLAVE   frase larga para cifrar; guárdela también fuera de GitHub (sin ella no se puede restaurar)
+name: Respaldo
+
+on:
+  schedule:
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: respaldo
+  cancel-in-progress: false
+
+jobs:
+  respaldar:
+    name: Respaldo cifrado de la base
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      RESPALDO_CLAVE: ${{ secrets.RESPALDO_CLAVE }}
+    steps:
+      - name: Comprobar los secretos
+        id: secretos
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ] || [ -z "$RESPALDO_CLAVE" ]; then
+            echo "::warning::Faltan los secretos SUPABASE_DB_URL y RESPALDO_CLAVE (docs/continuidad.md). No se hizo el respaldo."
+            echo "listo=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "listo=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Instalar pg_dump 17 (respalda PostgreSQL 15, 16 y 17)
+        if: steps.secretos.outputs.listo == 'true'
+        run: |
+          sudo apt-get install -y -qq postgresql-common > /dev/null
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y > /dev/null
+          sudo apt-get install -y -qq postgresql-client-17 > /dev/null
+      - name: Respaldar, verificar y cifrar
+        if: steps.secretos.outputs.listo == 'true'
+        run: |
+          set -euo pipefail
+          umask 077
+          archivo="tice_$(TZ=America/Lima date +%Y%m%d_%H%M).dump"
+          /usr/lib/postgresql/17/bin/pg_dump --schema=public --no-owner --no-privileges -Fc -f "$archivo" "$SUPABASE_DB_URL"
+          # solo se acepta si pg_restore puede leerlo y trae las tablas principales
+          /usr/lib/postgresql/17/bin/pg_restore --list "$archivo" > lista.txt
+          for t in equipos incidencias usuarios; do grep -q "TABLE DATA public $t " lista.txt || { echo "::error::El respaldo no trae la tabla $t"; exit 1; }; done
+          echo "Respaldo verificado: $(du -h "$archivo" | cut -f1), $(grep -c 'TABLE DATA' lista.txt) tablas con datos"
+          printf '%s' "$RESPALDO_CLAVE" | gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-fd 0 \
+            --symmetric --cipher-algo AES256 -o "$archivo.gpg" "$archivo"
+          rm -f "$archivo" lista.txt
+          echo "ARCHIVO=$archivo.gpg" >> "$GITHUB_ENV"
+      - name: Guardar 30 días
+        if: steps.secretos.outputs.listo == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARCHIVO }}
+          path: ${{ env.ARCHIVO }}
+          retention-days: 30
+          if-no-files-found: error

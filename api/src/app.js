@@ -39,7 +39,7 @@ function crearApp() {
   // así que sin sesión se cuenta por IP y con sesión por usuario (limiteUsuario, después de autenticar).
   if (config.rateLimit.activo) aplicarLimites(app);
 
-  app.get('/api/salud', (_req, res) => res.json({ ok: true }));
+  app.use('/api/salud', require('./routes/salud'));
   app.use('/api/auth', require('./routes/auth'));
   app.post('/api/correos/entrante', correos.rutaEntrante(config));
   app.use('/api/correos/salida', correos.rutasSalida(config));

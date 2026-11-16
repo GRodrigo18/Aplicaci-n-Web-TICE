@@ -6,6 +6,8 @@ const Ctx = createContext(null);
 export function SesionProvider({ children }) {
   const [usuario, setUsuario] = useState(null);
   const [cargando, setCargando] = useState(!!leerToken());
+  // el servidor no respondió al abrir la sesión guardada: se muestra "sin conexión" en vez de cerrar la sesión
+  const [sinConexion, setSinConexion] = useState('');
   const [catalogos, setCatalogos] = useState(null);
   const [sedes, setSedes] = useState([]);
   // sede elegida por el Director en el selector ('' = todas)
@@ -27,7 +29,8 @@ export function SesionProvider({ children }) {
     if (!leerToken()) return;
     api.get('/auth/me')
       .then(async (u) => { setUsuario(u); await cargarContexto(); })
-      .catch(cerrar)
+      // solo un 401 (sesión vencida) cierra la sesión; si el servidor está despertando o caído se espera
+      .catch((err) => (err.status === 401 ? cerrar() : setSinConexion(err.message || 'Sin conexión')))
       .finally(() => setCargando(false));
   }, [cerrar, cargarContexto]);
 
@@ -44,7 +47,7 @@ export function SesionProvider({ children }) {
   const sedeParam = esDirector ? sedeSel : '';
 
   return (
-    <Ctx.Provider value={{ usuario, cargando, iniciar, iniciarGoogle, cerrar, catalogos, sedes, setSedes, esDirector, sedeSel, setSedeSel, sedeParam, recargarContexto: cargarContexto }}>
+    <Ctx.Provider value={{ usuario, cargando, sinConexion, iniciar, iniciarGoogle, cerrar, catalogos, sedes, setSedes, esDirector, sedeSel, setSedeSel, sedeParam, recargarContexto: cargarContexto }}>
       {children}
     </Ctx.Provider>
   );

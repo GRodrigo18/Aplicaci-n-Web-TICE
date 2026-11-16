@@ -1,0 +1,102 @@
+# Pruebas antes de publicar: en cada push y pull request se ejecutan las pruebas de la API, se compila la web y
+# se construye y prueba la MISMA imagen que usa Render (Dockerfile.render) contra un PostgreSQL limpio.
+# En Render, con "Auto-Deploy: After CI Checks Pass", solo se publica un commit si todo esto pasó.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pruebas-api:
+    name: Pruebas de la API
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: tice
+          POSTGRES_PASSWORD: tice
+          POSTGRES_DB: tice_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U tice" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+      - run: npm ci
+        working-directory: api
+      - run: npm test
+        working-directory: api
+        env:
+          TEST_DATABASE_URL: postgres://tice:tice@localhost:5432/tice_test
+      - name: Dependencias sin vulnerabilidades altas
+        run: npm audit --omit=dev --audit-level=high
+        working-directory: api
+
+  web:
+    name: Compilación de la web
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      - run: npm run build
+        working-directory: web
+
+  imagen-render:
+    name: Imagen de Render + prueba de humo
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: tice
+          POSTGRES_PASSWORD: tice
+          POSTGRES_DB: tice
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U tice" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Construir Dockerfile.render
+        run: docker build -f Dockerfile.render -t sistema-tice:ci .
+      - name: Arrancar el contenedor como en Render
+        run: |
+          docker run -d --name tice --network host \
+            -e PORT=3000 -e DATABASE_URL=postgres://tice:tice@localhost:5432/tice \
+            -e JWT_SECRET=solo-ci -e DATOS_DEMO=true -e VERSION=${{ github.sha }} \
+            sistema-tice:ci
+      - name: Prueba de humo
+        run: REQUIERE_GOOGLE=false ESPERA_DESPERTAR_S=120 scripts/prueba-humo.sh http://localhost:3000 ${{ github.sha }}
+      - name: Respaldo con pg_dump dentro de la imagen
+        run: docker exec tice pg_dump --schema=public --no-owner postgres://tice:tice@localhost:5432/tice | grep -q 'CREATE TABLE public.equipos'
+      - name: Apagado ordenado (SIGTERM)
+        run: |
+          docker stop -t 15 tice
+          docker logs tice 2>&1 | tail -5
+          docker logs tice 2>&1 | grep -q 'SIGTERM recibido'
+      - name: Registro del contenedor si algo falló
+        if: failure()
+        run: docker logs tice 2>&1 | tail -80

@@ -16,6 +16,8 @@ services:
     dockerfilePath: ./Dockerfile.render
     dockerContext: .
     healthCheckPath: /api/salud
+    # Solo publica un commit de main si pasaron las pruebas de GitHub Actions (.github/workflows/ci.yml)
+    autoDeployTrigger: checksPass
     envVars:
       # Cadena de conexión de PostgreSQL. Se escribe en Environment (por ejemplo la del Session pooler de
       # Supabase, que no vence); Render no la sobrescribe al sincronizar el Blueprint.
