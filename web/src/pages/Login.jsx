@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowRight, Eye, EyeOff, Laptop, Lock, Mail, Monitor, Moon, Printer, Projector, ShieldCheck, Sun } from 'lucide-react';
 import { useSesion } from '../sesion.jsx';
 import { api } from '../api.js';
@@ -58,7 +58,15 @@ export function BotonGoogle({ clientId, onCredencial, texto = 'continue_with' })
 export default function Login() {
   const { iniciar, iniciarGoogle } = useSesion();
   const [config, setConfig] = useState({ google_client_id: null, dominios: [] });
-  useEffect(() => { api.get('/auth/config').then(setConfig).catch(() => {}); }, []);
+  // estado de la configuración: 'cargando' | 'lista' | mensaje de error (para no decir "Google no está activado"
+  // cuando en realidad el servidor no respondió)
+  const [estadoConfig, setEstadoConfig] = useState('cargando');
+  const cargarConfig = useCallback(() => {
+    setEstadoConfig('cargando');
+    api.get('/auth/config').then((c) => { setConfig(c); setEstadoConfig('lista'); })
+      .catch((err) => setEstadoConfig(err.message || 'No se pudo conectar con el servidor'));
+  }, []);
+  useEffect(() => { cargarConfig(); }, [cargarConfig]);
   const dominio = config.dominios[0] || 'nslm.edu.pe';
   const conGoogle = useRef(null);
   conGoogle.current = async (credencial) => {
@@ -137,6 +145,13 @@ export default function Login() {
             <div className="mt-8">
               <BotonGoogle clientId={config.google_client_id} onCredencial={alGoogle} />
               {ocupado && <p className="mt-3 text-center text-sm text-slate-500">Validando tu cuenta…</p>}
+            </div>
+          ) : estadoConfig === 'cargando' ? (
+            <p className="mt-8 text-center text-sm text-slate-500">Conectando con el sistema…</p>
+          ) : estadoConfig !== 'lista' ? (
+            <div className="mt-8 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
+              {estadoConfig}
+              <button type="button" className="mt-2 block font-semibold text-rose-800 underline" onClick={cargarConfig}>Reintentar</button>
             </div>
           ) : (
             <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
