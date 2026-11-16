@@ -14,7 +14,7 @@ const { instalarDesdeEntorno } = require('./scripts/instalar');
 // Mientras tanto la API responde 503 (la web lo muestra como "el sistema se está preparando"); /api/salud responde siempre.
 const servidor = express();
 servidor.use((req, res, next) => {
-  if (estado.listo || req.path === '/api/salud' || req.path === '/api/salud/bd' || !req.path.startsWith('/api/')) return next();
+  if (estado.listo || req.path.startsWith('/api/salud') || !req.path.startsWith('/api/')) return next();
   res.set('Retry-After', '30').status(503).json({ error: 'El sistema se está preparando. Vuelva a intentarlo en unos minutos.' });
 });
 servidor.use(crearApp());
